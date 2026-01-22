@@ -6525,138 +6525,424 @@ async function showNonPaymentPage(nonPaymentId) {
       return;
     }
 
-    // تحديث الصفحة الخامسة بالبيانات
-    updatePageFiveWithNonPayment(record);
-
-    // إظهار الصفحة الخامسة
-    const pageFive = Utils.$(".page-five");
-    if (pageFive) {
-      // إزالة display: none
-      pageFive.style.display = "block";
-      pageFive.classList.add("active-non-payment");
-    }
-
-    // سؤال المستخدم عن الطباعة
-    if (confirm("هل تريد طباعة صفحة عدم دفع الرسوم؟")) {
-      // طباعة الصفحة الخامسة فقط
-      await printOnlyPageFive();
-    }
-
-    // إخفاء الصفحة بعد الطباعة
-    setTimeout(() => {
-      if (pageFive) {
-        pageFive.style.display = "none";
-        pageFive.classList.remove("active-non-payment");
-      }
-    }, 1000);
+    // فتح نافذة طباعة منفصلة (مثل الإحصائية الشهرية)
+    printNonPaymentInNewWindow(record);
 
   } catch (err) {
     console.error("Error showing non-payment page:", err);
+    showNotification("❌ حدث خطأ", "error");
   }
 }
 
-// دالة جديدة لطباعة الصفحة الخامسة فقط
-async function printOnlyPageFive() {
-  const allPages = Utils.$$(".page");
-  const originalStyles = new Map();
-  
-  // إخفاء كل الصفحات ماعدا الخامسة
-  allPages.forEach((page) => {
-    originalStyles.set(page, {
-      display: page.style.display,
-      visibility: page.style.visibility
-    });
-    
-    if (page.classList.contains("page-five")) {
-      page.style.display = "block";
-      page.style.visibility = "visible";
-    } else {
-      page.style.display = "none";
-      page.style.visibility = "hidden";
-    }
-  });
-  
-  // الطباعة
-  await new Promise(resolve => setTimeout(resolve, 300));
-  window.print();
-  
-  // استعادة الحالة الأصلية
-  allPages.forEach((page) => {
-    const original = originalStyles.get(page);
-    if (original) {
-      page.style.display = original.display;
-      page.style.visibility = original.visibility;
-    }
-  });
-}
-
-
-// دالة جديدة لإخفاء الصفحة الخامسة
-function hidePageFive() {
-  const pageFive = Utils.$(".page-five");
-  if (pageFive) {
-    pageFive.style.display = "none";
-    pageFive.classList.remove("active-non-payment");
-    pageFive.setAttribute("data-non-payment", "false");
-  }
-}
-
-
-/**
- * تحديث الصفحة الخامسة ببيانات عدم الدفع
- */
-function updatePageFiveWithNonPayment(record) {
-  // تحديث لقب المرسل إليه
-  const recipientTitleEl = Utils.$('.page-five [data-field="np-recipient-title"]');
-  if (recipientTitleEl) {
-    recipientTitleEl.textContent = record.recipient_title || 'السيد /';
-  }
-
-  // تحديث اسم المرسل إليه
-  const recipientNameEl = Utils.$('.page-five [data-field="np-recipient-name"]');
-  if (recipientNameEl) {
-    recipientNameEl.textContent = record.recipient_name || '';
-  }
-
-  // تحديث رقم الوارد (بالأرقام العربية)
-  const letterNumberEl = Utils.$('.page-five [data-field="np-letter-number"]');
-  if (letterNumberEl) {
-    letterNumberEl.textContent = toArabicNumber(record.incoming_number) || '';
-  }
-
-  // تحديث تاريخ الوارد (بالأرقام العربية)
-  const letterDateEl = Utils.$('.page-five [data-field="np-letter-date"]');
-  if (letterDateEl) {
-    const date = new Date(record.incoming_date);
+function printNonPaymentInNewWindow(record) {
+  // تنسيق التاريخ
+  const formatDate = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
     const day = toArabicNumber(date.getDate());
     const month = toArabicNumber(date.getMonth() + 1);
     const year = toArabicNumber(date.getFullYear());
-    letterDateEl.textContent = `${day}/${month}/${year}`;
-  }
+    return `${day}/${month}/${year}`;
+  };
 
-  // تحديث النشاط
-  const activityEl = Utils.$('.page-five [data-field="np-activity"]');
-  if (activityEl) {
-    activityEl.textContent = record.activity || '';
-  }
+  // تاريخ اليوم
+  const today = new Date();
+  const todayFormatted = formatDate(today.getTime());
 
-  // تحديث باسم / اسم المالك (في مكانين)
-  const ownerNameEl = Utils.$('.page-five [data-field="np-owner-name"]');
-  if (ownerNameEl) {
-    ownerNameEl.textContent = record.owner_name || '';
-  }
+  // إنشاء محتوى الصفحة
+  const printContent = `
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head>
+      <meta charset="UTF-8">
+      <title>عدم دفع رسوم - ${record.activity || ''}</title>
+      <style>
+        @page {
+          size: A4;
+          margin: 10mm;
+        }
+        
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        body {
+          font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+          direction: rtl;
+          background: white;
+          padding: 20px;
+          line-height: 1.6;
+        }
+        
+        .page-container {
+          max-width: 210mm;
+          margin: 0 auto;
+          background: white;
+        }
+        
+        /* ========== Header ========== */
+        .header {
+          text-align: center;
+          margin-bottom: 20px;
+          padding-bottom: 15px;
+          border-bottom: 3px double #333;
+        }
+        
+        .header-logo {
+          max-width: 600px;
+          height: auto;
+          margin-bottom: 10px;
+        }
+        
+        .ministry-info {
+          font-size: 14px;
+          color: #333;
+          font-weight: bold;
+        }
+        
+        /* ========== المحتوى ========== */
+        .content {
+          padding: 0 20px;
+        }
+        
+        /* المرسل إليه */
+        .recipient-section {
+          margin-bottom: 20px;
+        }
+        
+        .recipient-row {
+          font-size: 18px;
+          font-weight: bold;
+          margin-bottom: 10px;
+        }
+        
+        .greeting {
+          font-size: 20px;
+          text-align: center;
+          margin: 15px 0;
+          font-style: italic;
+        }
+        
+        /* بيانات الطلب */
+        .request-info {
+          margin: 20px 0;
+          padding: 15px;
+          background: #f9f9f9;
+          border-radius: 8px;
+          border-right: 4px solid #333;
+        }
+        
+        .info-item {
+          margin: 10px 0;
+          font-size: 15px;
+          display: flex;
+          align-items: flex-start;
+        }
+        
+        .info-item::before {
+          content: "•";
+          margin-left: 10px;
+          font-weight: bold;
+        }
+        
+        .info-label {
+          font-weight: bold;
+          margin-left: 8px;
+          min-width: 120px;
+        }
+        
+        .info-value {
+          flex: 1;
+        }
+        
+        /* قرار الإدارة */
+        .decision-box {
+          text-align: center;
+          margin: 30px 0;
+        }
+        
+        .decision-title {
+          font-size: 28px;
+          font-weight: bold;
+          color: #c00;
+          padding: 15px 30px;
+          display: inline-block;
+          border: 3px double #c00;
+          border-radius: 10px;
+        }
+        
+        /* نص القرار */
+        .decision-text {
+          text-align: justify;
+          line-height: 1.8;
+          margin: 20px 0;
+          padding: 15px;
+          background: #fff5f5;
+          border-radius: 8px;
+          border: 1px solid #fcc;
+        }
+        
+        .decision-text p {
+          margin: 10px 0;
+          text-indent: 20px;
+        }
+        
+        /* الخاتمة */
+        .closing {
+          text-align: center;
+          font-size: 18px;
+          margin: 25px 0;
+          font-style: italic;
+        }
+        
+        /* التوقيعات */
+        .signatures-section {
+          display: flex;
+          justify-content: space-between;
+          margin: 30px 40px;
+          padding-top: 20px;
+        }
+        
+        .signature-block {
+          text-align: center;
+          min-width: 150px;
+        }
+        
+        .signature-rank {
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
+        
+        .signature-name {
+          font-size: 16px;
+          margin-bottom: 3px;
+        }
+        
+        .signature-position {
+          font-size: 13px;
+          color: #666;
+        }
+        
+        /* التاريخ */
+        .date-section {
+          text-align: left;
+          margin: 20px 0;
+          font-size: 13px;
+          font-style: italic;
+        }
+        
+        /* الاعتماد */
+        .approval-section {
+          margin-top: 30px;
+          padding-top: 20px;
+          border-top: 1px dashed #ccc;
+        }
+        
+        .approval-title {
+          text-align: center;
+          font-size: 18px;
+          font-weight: bold;
+          margin-bottom: 20px;
+          font-style: italic;
+        }
+        
+        .approval-signature {
+          text-align: center;
+          margin-right: 50px;
+        }
+        
+        .approval-rank {
+          font-weight: bold;
+          font-size: 16px;
+        }
+        
+        .approval-name {
+          font-size: 18px;
+          font-weight: bold;
+          margin: 5px 0;
+        }
+        
+        .approval-position {
+          font-size: 14px;
+        }
+        
+        /* ========== طباعة ========== */
+        @media print {
+          body {
+            padding: 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          
+          .page-container {
+            box-shadow: none;
+          }
+          
+          .decision-title {
+            border-color: #c00 !important;
+            color: #c00 !important;
+          }
+        }
+        
+        /* ========== زر الطباعة (للشاشة فقط) ========== */
+        .print-btn-container {
+          text-align: center;
+          margin: 20px 0;
+          padding: 15px;
+          background: #f0f0f0;
+          border-radius: 8px;
+        }
+        
+        .print-btn {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          border: none;
+          padding: 15px 40px;
+          font-size: 18px;
+          font-weight: bold;
+          border-radius: 10px;
+          cursor: pointer;
+          transition: all 0.3s;
+        }
+        
+        .print-btn:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        @media print {
+          .print-btn-container {
+            display: none !important;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="print-btn-container">
+        <button class="print-btn" onclick="window.print()">🖨️ طباعة الصفحة</button>
+      </div>
+      
+      <div class="page-container">
+        <!-- Header -->
+        <div class="header">
+          <div class="ministry-info">
+            <div>وزارة الداخلية</div>
+            <div>الإدارة العامة للحماية المدنية بالجيزة</div>
+            <div>إدارة الوقاية</div>
+          </div>
+        </div>
+        
+        <!-- المحتوى -->
+        <div class="content">
+          <!-- المرسل إليه -->
+          <div class="recipient-section">
+            <div class="recipient-row">
+              ${record.recipient_title || 'السيد /'} ${record.recipient_name || ''}
+            </div>
+            <div class="greeting">تحية طيبة ... وبعد ,,,</div>
+          </div>
+          
+          <!-- بيانات الطلب -->
+          <div class="request-info">
+            <div class="info-item">
+              <span>إيماء لكتاب سيادتكم الوارد برقم ( <strong>${toArabicNumber(record.incoming_number) || ''}</strong> ) بتاريخ <strong>${formatDate(record.incoming_date)}</strong> بطلب إجراء معاينة</span>
+            </div>
+            
+            <div class="info-item">
+              <span class="info-label">نشاط /</span>
+              <span class="info-value">${record.activity || ''}</span>
+            </div>
+            
+            <div class="info-item">
+              <span class="info-label">باسم /</span>
+              <span class="info-value">${record.owner_name || ''}</span>
+            </div>
+            
+            <div class="info-item">
+              <span class="info-label">الكائن /</span>
+              <span class="info-value">${record.location || ''}</span>
+            </div>
+          </div>
+          
+          <!-- قرار الإدارة -->
+          <div class="decision-box">
+            <div class="decision-title">(( فالإدارة لا توافق ))</div>
+          </div>
+          
+          <!-- نص القرار -->
+          <div class="decision-text">
+            <p>
+              على السير في إجراءات الترخيص أو التشغيل من وجهة نظر أمن الحريق
+              نظراً لعدم التزام المسئول عن النشاط باستكمال إجراءات تأمين
+              العاملين بالمنشأة ضد أخطار الحريق بالمخالفة للقوانين المنظمة له.
+            </p>
+            <p>
+              - وللجهة الإدارية المانحة للترخيص و المشرفة على النشاط سرعة إتخاذ
+              الإجراءات اللازمة إتجاه النشاط و غلقه لما يمثله حالياً من خطورة
+              داهمة على الأرواح والممتلكات العامة والخاصة ومجاوراته مع اعلان
+              المسئول عن النشاط بذلك.
+            </p>
+          </div>
+          
+          <!-- الخاتمة -->
+          <div class="closing">
+            ,,, وتفضلوا بقبول وافر الاحترام ,,,
+          </div>
+          
+          <!-- التاريخ -->
+          <div class="date-section">
+            تحريراً في: ${todayFormatted}
+          </div>
+          
+          <!-- التوقيعات -->
+          <div class="signatures-section">
+            <div class="signature-block">
+              <div class="signature-rank">عقيد /</div>
+              <div class="signature-name">أحمد عاطف</div>
+              <div class="signature-position">مدير إدارة الإطفاء</div>
+            </div>
+            
+            <div class="signature-block">
+              <div class="signature-rank">عقيد /</div>
+              <div class="signature-name">ياسر يسري</div>
+              <div class="signature-position">مدير إدارة الوقاية</div>
+            </div>
+          </div>
+          
+          <!-- الاعتماد -->
+          <div class="approval-section">
+            <div class="approval-title">يعتمد ويبلغ للجهات ....</div>
+            <div class="approval-signature">
+              <div class="approval-rank">لواء /</div>
+              <div class="approval-name">( محمد عدلي )</div>
+              <div class="approval-position">مدير الإدارة العامة للحماية المدنية بالجيزة</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <script>
+        // طباعة تلقائية بعد التحميل (اختياري)
+        // window.onload = function() { window.print(); };
+      </script>
+    </body>
+    </html>
+  `;
 
-  const ownerName2El = Utils.$('.page-five [data-field="np-owner-name-2"]');
-  if (ownerName2El) {
-    ownerName2El.textContent = record.owner_name || '';
-  }
+  // فتح نافذة جديدة
+  const printWindow = window.open('', '_blank', 'width=800,height=600');
+  printWindow.document.write(printContent);
+  printWindow.document.close();
 
-  // تحديث الكائن (العنوان)
-  const locationEl = Utils.$('.page-five [data-field="np-location"]');
-  if (locationEl) {
-    locationEl.textContent = record.location || '';
-  }
+  showNotification("✅ تم فتح صفحة عدم دفع الرسوم");
 }
+
+
+
+
+
 
 /**
  * عرض سجل عدم دفع موجود
