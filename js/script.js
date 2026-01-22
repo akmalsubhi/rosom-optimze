@@ -227,6 +227,8 @@ const NumberConverter = {
   arabicDigits: ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"],
   englishDigits: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
 
+  
+
   toArabic(text) {
     if (!text) return text;
     return String(text).replace(
@@ -282,6 +284,8 @@ const NumberConverter = {
   hasEnglishNumbers(text) {
     return /[0-9]/.test(text);
   },
+
+  
 
   /**
    * تحويل رقم لنص عربي
@@ -344,12 +348,16 @@ const NumberConverter = {
       return this.toWords(n) + " ألف";
     };
 
+    
+
     const getMillions = (n) => {
       if (n === 1) return "مليون";
       if (n === 2) return "مليونان";
       if (n >= 3 && n <= 10) return this.toWords(n) + " ملايين";
       return this.toWords(n) + " مليون";
     };
+
+    
 
     if (num < 20) return ones[num];
 
@@ -385,6 +393,20 @@ const NumberConverter = {
 
     return num.toLocaleString("ar-EG");
   },
+
+  formatWithCommas(num) {
+    if (!num && num !== 0) return '٠';
+    
+    // تحويل لرقم إذا كان string
+    const number = typeof num === 'string' ? parseInt(num) : num;
+    
+    // تنسيق بالفواصل (باستخدام locale إنجليزي للحصول على الفواصل الصحيحة)
+    const formatted = number.toLocaleString('en-US');
+    
+    // تحويل للأرقام العربية
+    return this.toArabic(formatted);
+  },
+
 };
 
 // Aliases للتوافق مع الكود القديم
@@ -394,6 +416,8 @@ const convertToEnglishNumbers = (text) => NumberConverter.toEnglish(text);
 const smartConvertNumbers = (text, mode) => NumberConverter.smart(text, mode);
 const numberToArabicWords = (num) => NumberConverter.toWords(num);
 const normalizeNumbers = (text) => NumberConverter.normalize(text);
+const formatNumberWithCommas = (num) => NumberConverter.formatWithCommas(num);
+
 
 // ========== نظام الإخطارات ==========
 const NotificationSystem = {
@@ -4620,8 +4644,7 @@ async function showStats() {
                   <tbody>
                     <tr>
                       <td>رسوم التدريب</td>
-                      <td class="amount">${toArabicNumber(stats.monthly.trainingFee)} ج</td>
-                    </tr>
+<td class="amount">${formatNumberWithCommas(stats.monthly.trainingFee)} ج</td>                    </tr>
                     <tr>
                       <td>التقرير الاستشاري</td>
                       <td class="amount">${toArabicNumber(stats.monthly.consultantFee)} ج</td>
@@ -4787,11 +4810,15 @@ function addSearchFixStyles() {
 }
 
 // ========== دالة طباعة الإحصائية الشهرية ==========
+// ========== دالة طباعة الإحصائية الشهرية المعدلة ==========
 async function printMonthlyStats() {
   const loader = Loading.print("يتم تجهيز الإحصائية الشهرية للطباعة...");
   
   try {
     const stats = await API.certificates.getStats();
+    
+    // حساب الإجمالي الكلي
+    const grandTotal = stats.monthly.governorateTotal + stats.monthly.ministryTotal;
     
     // إنشاء صفحة طباعة منفصلة
     const printContent = `
@@ -4865,6 +4892,15 @@ async function printMonthlyStats() {
             border-radius: 10px;
             margin-top: 20px;
           }
+          .grand-total .month-name {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+          }
+          .grand-total .total-value {
+            font-size: 28px;
+            font-weight: bold;
+          }
           .footer {
             margin-top: 30px;
             text-align: center;
@@ -4891,7 +4927,7 @@ async function printMonthlyStats() {
           <p>الإدارة العامة للحماية المدنية بالجيزة - إدارة الوقاية</p>
         </div>
         
-        <p class="note">*  إجمالي الأفراد المتدربين: ${toArabicNumber(stats.monthly.personsCount)} فرد</p>
+        <p class="note">*  إجمالي الأفراد المتدربين: ${formatNumberWithCommas(stats.monthly.personsCount)} فرد</p>
         
         <div class="section">
           <h2>🏛️ رسوم المحافظة</h2>
@@ -4905,23 +4941,23 @@ async function printMonthlyStats() {
             <tbody>
               <tr>
                 <td>رسوم التدريب</td>
-                <td class="amount">${toArabicNumber(stats.monthly.trainingFee)} جنيه</td>
+                <td class="amount">${formatNumberWithCommas(stats.monthly.trainingFee)} جنيه</td>
               </tr>
               <tr>
                 <td>التقرير الاستشاري</td>
-                <td class="amount">${toArabicNumber(stats.monthly.consultantFee)} جنيه</td>
+                <td class="amount">${formatNumberWithCommas(stats.monthly.consultantFee)} جنيه</td>
               </tr>
               <tr>
                 <td>خطة الإخلاء</td>
-                <td class="amount">${toArabicNumber(stats.monthly.evacuationFee)} جنيه</td>
+                <td class="amount">${formatNumberWithCommas(stats.monthly.evacuationFee)} جنيه</td>
               </tr>
               <tr>
                 <td>المعاينة / الانتقال</td>
-                <td class="amount">${toArabicNumber(stats.monthly.inspectionFee)} جنيه</td>
+                <td class="amount">${formatNumberWithCommas(stats.monthly.inspectionFee)} جنيه</td>
               </tr>
               <tr class="total-row">
                 <td><strong>إجمالي رسوم المحافظة</strong></td>
-                <td class="amount"><strong>${toArabicNumber(stats.monthly.governorateTotal)} جنيه</strong></td>
+                <td class="amount"><strong>${formatNumberWithCommas(stats.monthly.governorateTotal)} جنيه</strong></td>
               </tr>
             </tbody>
           </table>
@@ -4939,23 +4975,24 @@ async function printMonthlyStats() {
             <tbody>
               <tr>
                 <td>رسوم الأفراد بالفيزا</td>
-                <td class="amount">${toArabicNumber(stats.monthly.ministryPersonsFee)} جنيه</td>
+                <td class="amount">${formatNumberWithCommas(stats.monthly.ministryPersonsFee)} جنيه</td>
               </tr>
               <tr>
                 <td>رسوم المساحة</td>
-                <td class="amount">${toArabicNumber(stats.monthly.areaFee)} جنيه</td>
+                <td class="amount">${formatNumberWithCommas(stats.monthly.areaFee)} جنيه</td>
               </tr>
               <tr class="total-row">
                 <td><strong>إجمالي رسوم الوزارة</strong></td>
-                <td class="amount"><strong>${toArabicNumber(stats.monthly.ministryTotal)} جنيه</strong></td>
+                <td class="amount"><strong>${formatNumberWithCommas(stats.monthly.ministryTotal)} جنيه</strong></td>
               </tr>
             </tbody>
           </table>
         </div>
         
         <div class="grand-total">
-          الإجمالي الكلي للشهر: ${toArabicNumber(stats.monthly.governorateTotal + stats.monthly.ministryTotal)} جنيه
-        </div>
+  <div class="month-name">الإجمالي الكلي لشهر ${stats.monthly.monthName} ${stats.monthly.year}</div>
+  <div class="total-value">${formatNumberWithCommas(grandTotal)} جنيه</div>
+</div>
         
         <div class="footer">
           تم الطباعة بتاريخ: ${formatDate(Date.now())}
@@ -4981,6 +5018,7 @@ async function printMonthlyStats() {
     loader.hide();
   }
 }
+
 
 
 // ========== إلغاء عدم دفع الرسوم ==========
@@ -6493,25 +6531,65 @@ async function showNonPaymentPage(nonPaymentId) {
     // إظهار الصفحة الخامسة
     const pageFive = Utils.$(".page-five");
     if (pageFive) {
+      // إزالة display: none
       pageFive.style.display = "block";
       pageFive.classList.add("active-non-payment");
-      pageFive.setAttribute("data-non-payment", "true");
     }
 
     // سؤال المستخدم عن الطباعة
     if (confirm("هل تريد طباعة صفحة عدم دفع الرسوم؟")) {
-      await PrintSystem.printPages([5]);
+      // طباعة الصفحة الخامسة فقط
+      await printOnlyPageFive();
     }
 
     // إخفاء الصفحة بعد الطباعة
     setTimeout(() => {
-      hidePageFive();
+      if (pageFive) {
+        pageFive.style.display = "none";
+        pageFive.classList.remove("active-non-payment");
+      }
     }, 1000);
 
   } catch (err) {
     console.error("Error showing non-payment page:", err);
   }
 }
+
+// دالة جديدة لطباعة الصفحة الخامسة فقط
+async function printOnlyPageFive() {
+  const allPages = Utils.$$(".page");
+  const originalStyles = new Map();
+  
+  // إخفاء كل الصفحات ماعدا الخامسة
+  allPages.forEach((page) => {
+    originalStyles.set(page, {
+      display: page.style.display,
+      visibility: page.style.visibility
+    });
+    
+    if (page.classList.contains("page-five")) {
+      page.style.display = "block";
+      page.style.visibility = "visible";
+    } else {
+      page.style.display = "none";
+      page.style.visibility = "hidden";
+    }
+  });
+  
+  // الطباعة
+  await new Promise(resolve => setTimeout(resolve, 300));
+  window.print();
+  
+  // استعادة الحالة الأصلية
+  allPages.forEach((page) => {
+    const original = originalStyles.get(page);
+    if (original) {
+      page.style.display = original.display;
+      page.style.visibility = original.visibility;
+    }
+  });
+}
+
 
 // دالة جديدة لإخفاء الصفحة الخامسة
 function hidePageFive() {

@@ -1602,12 +1602,10 @@ body {
 
 /* ========== الصفحة الخامسة ========== */
 .page-five {
-  display: none !important;
+  display: none; /* مخفية افتراضياً - بدون !important */
 }
 
-.page-five.active-non-payment {
-  display: block !important;
-}
+
 
 
 @media print {
@@ -1618,6 +1616,12 @@ body {
     width: 0 !important;
     position: absolute !important;
     left: -9999px !important;
+  }
+
+  .page-five.active-non-payment {
+    display: block !important;
+    visibility: visible !important;
+    page-break-before: always;
   }
 }
 
