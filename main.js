@@ -24,7 +24,7 @@ function createSplashWindow() {
     });
 
     splashWindow.loadFile(path.join(__dirname, 'splash.html'));
-    
+
     // إخفاء من taskbar
     splashWindow.setSkipTaskbar(true);
 }
@@ -74,6 +74,10 @@ function createWindow() {
             event.preventDefault();
             mainWindow.webContents.send('shortcut-new');
         }
+        if (input.control && input.key.toLowerCase() === 'f') {
+            event.preventDefault();
+            mainWindow.webContents.send('shortcut-search');
+        }
     });
 }
 
@@ -102,39 +106,39 @@ async function initializeApp() {
         sendProgress('تجهيز مسار البيانات...', 'جاري التحضير', 10);
         const userDataPath = app.getPath('userData');
         const dataDir = path.join(userDataPath, 'data');
-        
+
         if (!fs.existsSync(dataDir)) {
             fs.mkdirSync(dataDir, { recursive: true });
         }
-        
+
         console.log('📁 User Data Path:', userDataPath);
         console.log('📁 Data Directory:', dataDir);
-        
+
         // تعيين المسار في db module
         db.setDataPath(dataDir);
-        
+
         // خطوة 1: تهيئة قاعدة البيانات
         sendProgress('تهيئة قاعدة البيانات...', 'جاري الاتصال', 20);
         await db.init();
-        
+
         // خطوة 2: تحميل الإعدادات
         sendProgress('تحميل إعدادات النظام...', 'قراءة الملفات', 40);
         await new Promise(resolve => setTimeout(resolve, 300));
-        
+
         // خطوة 3: إنشاء النافذة الرئيسية
         sendProgress('تجهيز واجهة المستخدم...', 'تحميل المكونات', 60);
         createWindow();
-        
+
         // خطوة 4: انتظار تحميل الواجهة
         sendProgress('تحميل المكونات...', 'جاري التحميل', 80);
-        
+
         // انتظار تحميل النافذة الرئيسية
         await new Promise(resolve => {
             mainWindow.webContents.on('did-finish-load', resolve);
         });
-        
+
         sendProgress('اكتمل التحميل!', 'جاهز للعمل', 100);
-        
+
     } catch (err) {
         console.error('Failed to initialize:', err);
         // إظهار النافذة الرئيسية حتى لو فيه خطأ
@@ -155,7 +159,7 @@ ipcMain.on('splash-ready', () => {
     if (mainWindow) {
         mainWindow.show();
         mainWindow.focus();
-        
+
         // إضافة تأثير fade
         mainWindow.setOpacity(0);
         let opacity = 0;
@@ -169,7 +173,7 @@ ipcMain.on('splash-ready', () => {
             }
         }, 30);
     }
-    
+
     // إغلاق splash بعد تأخير قصير
     setTimeout(() => {
         if (splashWindow && !splashWindow.isDestroyed()) {
@@ -270,19 +274,19 @@ ipcMain.handle('db-delete-certificate', async (event, { id, deletedBy }) => {
 
 // عدم دفع الرسوم
 ipcMain.handle('non-payment:create', async (event, certId, data) => {
-  return db.createNonPaymentRecord(certId, data);
+    return db.createNonPaymentRecord(certId, data);
 });
 
 ipcMain.handle('non-payment:get', async (event, id) => {
-  return db.getNonPaymentRecord(id);
+    return db.getNonPaymentRecord(id);
 });
 
 ipcMain.handle('non-payment:get-by-certificate', async (event, certId) => {
-  return db.getNonPaymentByCertificate(certId);
+    return db.getNonPaymentByCertificate(certId);
 });
 
 ipcMain.handle('non-payment:cancel', async (event, certId) => {
-  return db.cancelNonPayment(certId);
+    return db.cancelNonPayment(certId);
 });
 
 ipcMain.handle('db-search-certificates', async (event, searchTerm) => {
@@ -348,9 +352,9 @@ ipcMain.handle('export-pdf', async (event, options = {}) => {
             pageSize: 'A4',
             scaleFactor: 100
         };
-        
+
         const data = await mainWindow.webContents.printToPDF(pdfOptions);
-        
+
         const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
             title: 'حفظ ملف PDF',
             defaultPath: options.fileName || `شهادة_${Date.now()}.pdf`,
@@ -358,13 +362,13 @@ ipcMain.handle('export-pdf', async (event, options = {}) => {
                 { name: 'PDF Files', extensions: ['pdf'] }
             ]
         });
-        
+
         if (canceled || !filePath) {
             return { success: false, canceled: true };
         }
-        
+
         fs.writeFileSync(filePath, data);
-        
+
         return { success: true, filePath };
     } catch (err) {
         console.error('export-pdf error', err);

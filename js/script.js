@@ -227,7 +227,7 @@ const NumberConverter = {
   arabicDigits: ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"],
   englishDigits: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
 
-  
+
 
   toArabic(text) {
     if (!text) return text;
@@ -285,7 +285,7 @@ const NumberConverter = {
     return /[0-9]/.test(text);
   },
 
-  
+
 
   /**
    * تحويل رقم لنص عربي
@@ -348,7 +348,7 @@ const NumberConverter = {
       return this.toWords(n) + " ألف";
     };
 
-    
+
 
     const getMillions = (n) => {
       if (n === 1) return "مليون";
@@ -357,7 +357,7 @@ const NumberConverter = {
       return this.toWords(n) + " مليون";
     };
 
-    
+
 
     if (num < 20) return ones[num];
 
@@ -396,13 +396,13 @@ const NumberConverter = {
 
   formatWithCommas(num) {
     if (!num && num !== 0) return '٠';
-    
+
     // تحويل لرقم إذا كان string
     const number = typeof num === 'string' ? parseInt(num) : num;
-    
+
     // تنسيق بالفواصل (باستخدام locale إنجليزي للحصول على الفواصل الصحيحة)
     const formatted = number.toLocaleString('en-US');
-    
+
     // تحويل للأرقام العربية
     return this.toArabic(formatted);
   },
@@ -1572,17 +1572,17 @@ function applyChanges() {
 
   // تحويل الأرقام
   let activity = NumberConverter.smart(
-  Utils.getElement("inputActivity", false)?.value.trim() || ""
-);
-let name = NumberConverter.smart(
-  Utils.getElement("inputName", false)?.value.trim() || ""
-);
-let location = NumberConverter.smart(
-  Utils.getElement("inputLocation", false)?.value.trim() || ""
-);
+    Utils.getElement("inputActivity", false)?.value.trim() || ""
+  );
+  let name = NumberConverter.smart(
+    Utils.getElement("inputName", false)?.value.trim() || ""
+  );
+  let location = NumberConverter.smart(
+    Utils.getElement("inputLocation", false)?.value.trim() || ""
+  );
 
-// ========== إضافة "- الجيزة" تلقائياً للعنوان ==========
-location = ensureGizaSuffix(location);
+  // ========== إضافة "- الجيزة" تلقائياً للعنوان ==========
+  location = ensureGizaSuffix(location);
 
   // تحديث الحقول
   const activityInput = Utils.getElement("inputActivity", false);
@@ -1817,10 +1817,10 @@ function collectCertificateData() {
 // ========== دالة إضافة "- الجيزة" للعنوان ==========
 function ensureGizaSuffix(location) {
   if (!location || typeof location !== 'string') return location;
-  
+
   const trimmedLocation = location.trim();
   if (!trimmedLocation) return trimmedLocation;
-  
+
   // أنماط مختلفة للتحقق من وجود "الجيزة" في النهاية
   const gizaPatterns = [
     /[-–—]\s*الجيزة\s*\.?$/i,      // - الجيزة أو – الجيزة أو — الجيزة
@@ -1828,17 +1828,17 @@ function ensureGizaSuffix(location) {
     /[-–—]\s*جيزة\s*\.?$/i,        // - جيزة
     /جيزة\s*\.?$/i                 // جيزة في النهاية
   ];
-  
+
   // التحقق إذا كان العنوان ينتهي بالجيزة بأي شكل
   const hasGiza = gizaPatterns.some(pattern => pattern.test(trimmedLocation));
-  
+
   if (hasGiza) {
     return trimmedLocation; // موجودة بالفعل
   }
-  
+
   // إزالة النقطة من النهاية إذا وجدت قبل إضافة الجيزة
   let cleanLocation = trimmedLocation.replace(/\.\s*$/, '').trim();
-  
+
   // إضافة "- الجيزة"
   return cleanLocation + ' - الجيزة';
 }
@@ -4099,6 +4099,49 @@ const KeyboardShortcuts = {
 
 function setupKeyboardShortcuts() {
   KeyboardShortcuts.init();
+
+  // استقبال اختصارات لوحة المفاتيح من Electron
+  if (window.electronAPI && window.electronAPI.onShortcut) {
+    window.electronAPI.onShortcut('shortcut-save', async () => {
+      console.log('📌 Ctrl+S من Electron');
+      if (ValidationSystem.validate()) {
+        showNotification("💾 جاري الحفظ... (Ctrl+S)");
+        await saveCertificate();
+      }
+    });
+
+    window.electronAPI.onShortcut('shortcut-print', () => {
+      console.log('📌 Ctrl+P من Electron');
+      showPrintOptions();
+    });
+
+    window.electronAPI.onShortcut('shortcut-export-pdf', () => {
+      console.log('📌 Ctrl+E من Electron');
+      exportToPDF();
+    });
+
+    window.electronAPI.onShortcut('shortcut-new', () => {
+      console.log('📌 Ctrl+N من Electron');
+      const activeElement = document.activeElement;
+      const isTyping = activeElement &&
+        (activeElement.tagName === "INPUT" ||
+          activeElement.tagName === "TEXTAREA" ||
+          activeElement.isContentEditable);
+      if (!isTyping) {
+        newCertificate();
+      }
+    });
+
+    window.electronAPI.onShortcut('shortcut-search', () => {
+      console.log('📌 Ctrl+F من Electron');
+      openCertificatesModal();
+      setTimeout(() => {
+        Utils.getElement("searchCerts", false)?.focus();
+      }, 100);
+    });
+
+    console.log('✅ تم ربط اختصارات Electron');
+  }
 }
 
 function closeAllModals() {
@@ -4276,6 +4319,15 @@ async function performAdvancedSearch() {
     lastSearchResults = certs;
     renderCertificatesList(certs);
     showSearchSummary(certs.length, criteria);
+
+    // إخفاء البحث المتقدم بعد البحث لعرض النتائج بشكل أفضل
+    if (advancedSearchOpen) {
+      advancedSearchOpen = false;
+      const panel = Utils.getElement("advancedSearchPanel", false);
+      const btn = Utils.getElement("btnToggleAdvanced", false);
+      if (panel) panel.classList.remove("active");
+      if (btn) btn.textContent = "⚙️ بحث متقدم";
+    }
   } catch (err) {
     console.error("Advanced search error:", err);
     showNotification("❌ حدث خطأ أثناء البحث", "error");
@@ -4379,6 +4431,7 @@ function showSearchSummary(count, criteria) {
   const summary = Utils.getElement("searchSummary", false);
   if (!summary) return;
 
+  const activeFilters = [];
   if (criteria.minAmount)
     activeFilters.push(`الحد الأدنى: ${toArabicNumber(criteria.minAmount)} ج`);
   if (criteria.maxAmount)
@@ -4813,13 +4866,13 @@ function addSearchFixStyles() {
 // ========== دالة طباعة الإحصائية الشهرية المعدلة ==========
 async function printMonthlyStats() {
   const loader = Loading.print("يتم تجهيز الإحصائية الشهرية للطباعة...");
-  
+
   try {
     const stats = await API.certificates.getStats();
-    
+
     // حساب الإجمالي الكلي
     const grandTotal = stats.monthly.governorateTotal + stats.monthly.ministryTotal;
-    
+
     // إنشاء صفحة طباعة منفصلة
     const printContent = `
       <!DOCTYPE html>
@@ -5000,16 +5053,16 @@ async function printMonthlyStats() {
       </body>
       </html>
     `;
-    
+
     // فتح نافذة طباعة
     const printWindow = window.open('', '_blank');
     printWindow.document.write(printContent);
     printWindow.document.close();
-    
+
     setTimeout(() => {
       printWindow.print();
     }, 500);
-    
+
     showNotification("✅ تم تجهيز الإحصائية للطباعة");
   } catch (err) {
     console.error("Print monthly stats error:", err);
@@ -5026,22 +5079,22 @@ async function cancelNonPayment(certificateId) {
   if (!confirm("هل أنت متأكد من إلغاء حالة عدم دفع الرسوم؟\nسيتم احتساب هذه الشهادة في الإحصائيات.")) {
     return;
   }
-  
+
   const loader = Loading.save("يتم إلغاء حالة عدم دفع الرسوم...");
-  
+
   try {
     await window.electronAPI.nonPayment.cancel(certificateId);
-    
+
     showNotification("✅ تم إلغاء حالة عدم دفع الرسوم - الشهادة ستُحتسب في الإحصائيات الآن");
-    
+
     // تحديث القائمة
     if (Utils.getElement("certsModal", false)?.classList.contains("active")) {
       await showCertificatesList();
     }
-    
+
     // إغلاق modal عدم الدفع الموجود
     closeExistingNonPaymentModal();
-    
+
   } catch (err) {
     console.error("Error canceling non-payment:", err);
     showNotification("❌ حدث خطأ", "error");
@@ -6536,265 +6589,361 @@ async function showNonPaymentPage(nonPaymentId) {
 
 function printNonPaymentInNewWindow(record) {
   // تنسيق التاريخ
-  const formatDate = (timestamp) => {
+  const formatDateArabic = (timestamp) => {
     if (!timestamp) return '';
     const date = new Date(timestamp);
     const day = toArabicNumber(date.getDate());
     const month = toArabicNumber(date.getMonth() + 1);
     const year = toArabicNumber(date.getFullYear());
-    return `${day}/${month}/${year}`;
+    return `${year}/${month}/${day}`;
   };
 
   // تاريخ اليوم
-  const today = new Date();
-  const todayFormatted = formatDate(today.getTime());
+  const todayFormatted = formatDateArabic(Date.now());
 
-  // إنشاء محتوى الصفحة
+  // تاريخ الوارد
+  const incomingDateFormatted = formatDateArabic(record.incoming_date);
+
+  // اسم المستخدم المحفوظ
+  const userName = Storage.loadUserName() || 'اكمل,,,';
+
+  // إنشاء محتوى الصفحة بنفس تصميم page-five الأصلي
   const printContent = `
     <!DOCTYPE html>
     <html lang="ar" dir="rtl">
     <head>
       <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>عدم دفع رسوم - ${record.activity || ''}</title>
       <style>
         @page {
           size: A4;
-          margin: 10mm;
+          margin: 0;
         }
-        
+
+        @font-face {
+          font-family: "Sultan";
+          src: url("./assets/fonts/Sultan-bold.ttf") format("truetype");
+          font-weight: bold;
+        }
+
+        @font-face {
+          font-family: "Khalid";
+          src: url("./assets/fonts/Khalid-Art-bold.ttf") format("truetype");
+          font-weight: bold;
+        }
+
+        @font-face {
+          font-family: "PTBOLD";
+          src: url("./assets/fonts/PT-BOLD.ttf") format("truetype");
+          font-weight: bold;
+        }
+
+        @font-face {
+          font-family: "Typesetting";
+          src: url("./assets/fonts/type_setting.ttf") format("truetype");
+          font-weight: bold;
+        }
+
+        @font-face {
+          font-family: "Times";
+          src: url("./assets/fonts/Times.ttf") format("truetype");
+          font-weight: bold;
+        }
+
+        @font-face {
+          font-family: "DTPN";
+          src: url("./assets/fonts/DTPN.ttf") format("truetype");
+          font-weight: bold;
+        }
+
         * {
           margin: 0;
           padding: 0;
           box-sizing: border-box;
         }
-        
+
         body {
-          font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+          font-family: "Arial", "Tahoma", sans-serif;
+          background-color: #f0f0f0;
           direction: rtl;
-          background: white;
-          padding: 20px;
-          line-height: 1.6;
+          font-size: 11px;
+          line-height: 1.4;
         }
-        
-        .page-container {
-          max-width: 210mm;
-          margin: 0 auto;
+
+        .page {
+          width: 240mm;
+          height: 297mm;
+          margin: 10px auto;
           background: white;
+          padding: 2mm 12mm;
+          box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+          position: relative;
+          overflow: hidden;
         }
-        
-        /* ========== Header ========== */
-        .header {
+
+        .document-page-five {
+          padding: 15px 30px;
+        }
+
+        /* Header Image */
+        .header-page-five {
           text-align: center;
-          margin-bottom: 20px;
-          padding-bottom: 15px;
-          border-bottom: 3px double #333;
+          margin-bottom: -21px;
         }
-        
-        .header-logo {
-          max-width: 600px;
+
+        .header-image-five {
+          width: 100%;
+          margin-right: -37px;
+          max-width: 700px;
           height: auto;
-          margin-bottom: 10px;
         }
-        
-        .ministry-info {
-          font-size: 14px;
-          color: #333;
+
+        .info-item::before {
+          content: "";
+          display: inline-block;
+          width: 8px;
+          height: 8px;
+          background: #000;
+          margin-left: -3px;
+          vertical-align: middle;
+        }
+
+        /* المحتوى */
+        .content-page-five {
+          font-family: "Sultan", "serif";
+          font-size: 20pt;
           font-weight: bold;
         }
-        
-        /* ========== المحتوى ========== */
-        .content {
-          padding: 0 20px;
-        }
-        
+
         /* المرسل إليه */
         .recipient-section {
-          margin-bottom: 20px;
+          margin-bottom: -25px;
         }
-        
+
         .recipient-row {
-          font-size: 18px;
-          font-weight: bold;
-          margin-bottom: 10px;
+          font-family: "PTBOLD", serif;
+          font-size: 20pt;
+          margin-top: 35px;
+          margin-right: 63px;
+          margin-bottom: 5px;
         }
-        
-        .greeting {
-          font-size: 20px;
+
+        .greeting-five {
+          font-family: "Typesetting", "serif";
+          font-size: 26pt;
+          font-weight: bold;
           text-align: center;
-          margin: 15px 0;
+          margin-bottom: 29px;
+          margin-top: 8px;
           font-style: italic;
         }
-        
+
         /* بيانات الطلب */
         .request-info {
-          margin: 20px 0;
-          padding: 15px;
-          background: #f9f9f9;
-          border-radius: 8px;
-          border-right: 4px solid #333;
+          margin: -19px 0;
         }
-        
-        .info-item {
-          margin: 10px 0;
-          font-size: 15px;
-          display: flex;
-          align-items: flex-start;
+
+        .request-info .info-item {
+          margin: 2px 0;
+          padding-right: 10px;
         }
-        
-        .info-item::before {
-          content: "•";
-          margin-left: 10px;
+
+        .bullet-five {
+          color: #000;
+          margin-left: 5px;
           font-weight: bold;
         }
-        
-        .info-label {
-          font-weight: bold;
-          margin-left: 8px;
-          min-width: 120px;
-        }
-        
-        .info-value {
-          flex: 1;
-        }
-        
+
         /* قرار الإدارة */
         .decision-box {
           text-align: center;
-          margin: 30px 0;
+          margin: 5px 0;
         }
-        
+
         .decision-title {
-          font-size: 28px;
+          font-family: "Times", "serif";
+          font-size: 36pt;
           font-weight: bold;
-          color: #c00;
-          padding: 15px 30px;
+          color: #000;
           display: inline-block;
-          border: 3px double #c00;
-          border-radius: 10px;
+          padding: 5px 20px;
         }
-        
+
         /* نص القرار */
         .decision-text {
           text-align: justify;
-          line-height: 1.8;
-          margin: 20px 0;
-          padding: 15px;
-          background: #fff5f5;
-          border-radius: 8px;
-          border: 1px solid #fcc;
-        }
-        
-        .decision-text p {
-          margin: 10px 0;
-          text-indent: 20px;
-        }
-        
-        /* الخاتمة */
-        .closing {
-          text-align: center;
-          font-size: 18px;
-          margin: 25px 0;
-          font-style: italic;
-        }
-        
-        /* التوقيعات */
-        .signatures-section {
-          display: flex;
-          justify-content: space-between;
-          margin: 30px 40px;
-          padding-top: 20px;
-        }
-        
-        .signature-block {
-          text-align: center;
-          min-width: 150px;
-        }
-        
-        .signature-rank {
-          font-weight: bold;
-          margin-bottom: 5px;
-        }
-        
-        .signature-name {
-          font-size: 16px;
-          margin-bottom: 3px;
-        }
-        
-        .signature-position {
-          font-size: 13px;
-          color: #666;
-        }
-        
-        /* التاريخ */
-        .date-section {
-          text-align: left;
-          margin: 20px 0;
-          font-size: 13px;
-          font-style: italic;
-        }
-        
-        /* الاعتماد */
-        .approval-section {
-          margin-top: 30px;
-          padding-top: 20px;
-          border-top: 1px dashed #ccc;
-        }
-        
-        .approval-title {
-          text-align: center;
-          font-size: 18px;
-          font-weight: bold;
-          margin-bottom: 20px;
-          font-style: italic;
-        }
-        
-        .approval-signature {
-          text-align: center;
-          margin-right: 50px;
-        }
-        
-        .approval-rank {
-          font-weight: bold;
-          font-size: 16px;
-        }
-        
-        .approval-name {
-          font-size: 18px;
-          font-weight: bold;
+          line-height: 1.6;
           margin: 5px 0;
         }
-        
+
+        .decision-text p {
+          font-family: "PTBOLD", "serif";
+          font-weight: bold;
+          font-style: italic;
+          font-size: 15pt;
+          margin: 3px 0;
+          text-indent: 20px;
+        }
+
+        /* الخاتمة */
+        .closing-five {
+          font-family: "DTPN", "serif";
+          text-align: center;
+          margin: 8px 0;
+          font-size: 20pt;
+        }
+
+        /* التوقيعات */
+        .signature-section-page-five {
+          display: flex;
+          justify-content: space-evenly;
+          align-items: flex-start;
+          margin-top: 10px;
+          padding: 0 10px;
+        }
+
+        .signature-page-five {
+          text-align: center;
+          font-family: "Sultan", serif;
+          font-size: 14pt;
+          font-weight: bold;
+        }
+
+        .signature-title-page-two {
+          font-weight: bold;
+          margin-left: 149px;
+        }
+
+        .signature-name {
+          margin-bottom: 3px;
+          margin-left: 34px;
+        }
+
+        .signature-position-five {
+          font-size: 14pt;
+          margin-left: 32px;
+        }
+
+        /* التاريخ */
+        .date-section {
+          font-family: "Arial", "serif";
+          text-decoration: underline;
+          font-style: italic;
+          font-weight: 600;
+          margin-right: -14px;
+          margin-bottom: 37px;
+          text-align: left;
+          font-size: 6pt;
+        }
+
+        .user-name-display {
+          text-decoration: none;
+          display: inline-block;
+        }
+
+        .date-extra {
+          font-size: 6pt;
+          margin-left: 49px;
+        }
+
+        /* الاعتماد */
+        .approval-section-five {
+          margin-top: 10px;
+          padding-top: 5px;
+        }
+
+        .approval-title-five {
+          text-align: center;
+          font-family: "Typesetting", "serif";
+          font-size: 24pt;
+          font-weight: bold;
+          font-style: italic;
+          margin-bottom: 5px;
+          margin-top: -6px;
+        }
+
+        .approval-signature {
+          text-align: right;
+          margin-right: 50px;
+        }
+
+        .approval-rank {
+          font-family: "Sultan", "serif";
+          font-style: italic;
+          font-weight: bold;
+          margin-top: 29px;
+          margin-right: 304px;
+          font-size: 20pt;
+        }
+
+        .approval-name {
+          font-family: "Sultan", "serif";
+          font-style: italic;
+          font-weight: bold;
+          font-size: 20pt;
+          margin: 5px;
+          margin-right: 370px;
+        }
+
         .approval-position {
-          font-size: 14px;
+          font-family: "Sultan", "serif";
+          font-style: italic;
+          font-weight: bold;
+          font-size: 16pt;
+          letter-spacing: -0.5px;
+          margin-right: 248px;
         }
-        
-        /* ========== طباعة ========== */
-        @media print {
-          body {
-            padding: 0;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          
-          .page-container {
-            box-shadow: none;
-          }
-          
-          .decision-title {
-            border-color: #c00 !important;
-            color: #c00 !important;
-          }
+
+        .approval-dept {
+          font-size: 12px;
+          color: #333;
+          letter-spacing: -0.3px;
+          line-height: 1.3;
         }
-        
-        /* ========== زر الطباعة (للشاشة فقط) ========== */
+
+        .signatures-container {
+          display: flex;
+          gap: 60px;
+          margin-top: 20px;
+        }
+
+        .bank-row {
+          margin-bottom: 2px;
+          display: flex;
+          align-items: center;
+          flex-wrap: nowrap;
+        }
+
+        .bank-row::before {
+          content: "";
+          display: inline-block;
+          width: 4px;
+          height: 4px;
+          background: #000;
+          margin-left: 9px;
+          vertical-align: middle;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        .field-value {
+          font-family: "Khalid", "serif";
+          font-size: 16pt;
+          display: inline-block;
+          margin-right: 10px;
+        }
+
+        /* زر الطباعة */
         .print-btn-container {
           text-align: center;
-          margin: 20px 0;
+          margin: 20px auto;
           padding: 15px;
           background: #f0f0f0;
           border-radius: 8px;
+          max-width: 210mm;
         }
-        
+
         .print-btn {
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           color: white;
@@ -6806,15 +6955,26 @@ function printNonPaymentInNewWindow(record) {
           cursor: pointer;
           transition: all 0.3s;
         }
-        
+
         .print-btn:hover {
           transform: translateY(-3px);
           box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
         }
-        
+
         @media print {
+          body {
+            background: white;
+          }
+          
           .print-btn-container {
             display: none !important;
+          }
+          
+          .page {
+            margin: 0;
+            box-shadow: none;
+            width: 210mm;
+            height: 297mm;
           }
         }
       </style>
@@ -6823,121 +6983,127 @@ function printNonPaymentInNewWindow(record) {
       <div class="print-btn-container">
         <button class="print-btn" onclick="window.print()">🖨️ طباعة الصفحة</button>
       </div>
-      
-      <div class="page-container">
-        <!-- Header -->
-        <div class="header">
-          <div class="ministry-info">
-            <div>وزارة الداخلية</div>
-            <div>الإدارة العامة للحماية المدنية بالجيزة</div>
-            <div>إدارة الوقاية</div>
+
+      <div class="page">
+        <div class="document-page-five">
+          <!-- Header -->
+          <div class="header-page-five">
+            <img
+              src="./assets/img/tarwesa.png"
+              alt="ترويسة وزارة الداخلية"
+              class="header-image-five"
+            />
           </div>
-        </div>
-        
-        <!-- المحتوى -->
-        <div class="content">
-          <!-- المرسل إليه -->
-          <div class="recipient-section">
-            <div class="recipient-row">
-              ${record.recipient_title || 'السيد /'} ${record.recipient_name || ''}
+
+          <!-- المحتوى -->
+          <div class="content-page-five">
+            <!-- المرسل إليه -->
+            <div class="recipient-section">
+              <div class="recipient-row">
+                <strong>${record.recipient_title || 'السيد /'}</strong>
+                <span>${record.recipient_name || ''}</span>
+              </div>
+              <div class="greeting-five">تحية طيبة ... وبعد ,,,</div>
             </div>
-            <div class="greeting">تحية طيبة ... وبعد ,,,</div>
-          </div>
-          
-          <!-- بيانات الطلب -->
-          <div class="request-info">
-            <div class="info-item">
-              <span>إيماء لكتاب سيادتكم الوارد برقم ( <strong>${toArabicNumber(record.incoming_number) || ''}</strong> ) بتاريخ <strong>${formatDate(record.incoming_date)}</strong> بطلب إجراء معاينة</span>
+
+            <!-- بيانات الطلب -->
+            <div class="request-info">
+              <div class="info-item">
+                <span class="bullet-five"></span>
+                <span>إيماء لكتاب سيادتكم الوارد برقم (
+                  <strong>${toArabicNumber(record.incoming_number) || ''}</strong> ) بتاريخ
+                  <strong>${incomingDateFormatted}</strong> بطلب إجراء معاينة
+                  نشاط / ${record.activity || ''}</span>
+              </div>
+             
+              <div class="bank-row">
+                <strong>باسم /</strong>
+                <span class="field-value">${record.owner_name || ''}.</span>
+              </div>
+              <div class="bank-row">
+                <strong>الكائن /</strong>
+                <span class="field-value">${record.location || ''}.</span>
+              </div>
+              <div class="bank-row">
+                <strong>اسم المالك / المسئول /</strong>
+                <span class="field-value">${record.owner_name || ''}.</span>
+              </div>
             </div>
-            
-            <div class="info-item">
-              <span class="info-label">نشاط /</span>
-              <span class="info-value">${record.activity || ''}</span>
+
+            <!-- قرار الإدارة -->
+            <div class="decision-box">
+              <div class="decision-title">(( فالإدارة لا توافق ))</div>
             </div>
-            
-            <div class="info-item">
-              <span class="info-label">باسم /</span>
-              <span class="info-value">${record.owner_name || ''}</span>
+
+            <!-- نص القرار -->
+            <div class="decision-text">
+              <p>
+                على السير في إجراءات الترخيص أو التشغيل من وجهة نظر أمن الحريق
+                نظراً لعدم التزام المسئول عن النشاط باستكمال إجراءات تأمين
+                العاملين بالمنشأة ضد أخطار الحريق بالمخالفة للقوانين المنظمة له.
+              </p>
+              <p>
+                -وللجهة الإدارية المانحة للترخيص و المشرفة على النشاط سرعة إتخاذ
+                الإجراءات اللازمة إتجاه النشاط و غلقه لما يمثله حالياً من خطورة
+                داهمة على الأرواح والممتلكات العامة والخاصة ومجاوراته مع اعلان
+                المسئول عن النشاط بذلك .
+              </p>
             </div>
-            
-            <div class="info-item">
-              <span class="info-label">الكائن /</span>
-              <span class="info-value">${record.location || ''}</span>
+
+            <!-- الخاتمة -->
+            <div class="closing-five">
+              <p>,,, وتفضلوا بقبول وافر الاحترام ,,,</p>
             </div>
           </div>
-          
-          <!-- قرار الإدارة -->
-          <div class="decision-box">
-            <div class="decision-title">(( فالإدارة لا توافق ))</div>
-          </div>
-          
-          <!-- نص القرار -->
-          <div class="decision-text">
-            <p>
-              على السير في إجراءات الترخيص أو التشغيل من وجهة نظر أمن الحريق
-              نظراً لعدم التزام المسئول عن النشاط باستكمال إجراءات تأمين
-              العاملين بالمنشأة ضد أخطار الحريق بالمخالفة للقوانين المنظمة له.
-            </p>
-            <p>
-              - وللجهة الإدارية المانحة للترخيص و المشرفة على النشاط سرعة إتخاذ
-              الإجراءات اللازمة إتجاه النشاط و غلقه لما يمثله حالياً من خطورة
-              داهمة على الأرواح والممتلكات العامة والخاصة ومجاوراته مع اعلان
-              المسئول عن النشاط بذلك.
-            </p>
-          </div>
-          
-          <!-- الخاتمة -->
-          <div class="closing">
-            ,,, وتفضلوا بقبول وافر الاحترام ,,,
-          </div>
-          
-          <!-- التاريخ -->
-          <div class="date-section">
-            تحريراً في: ${todayFormatted}
-          </div>
-          
+
           <!-- التوقيعات -->
-          <div class="signatures-section">
-            <div class="signature-block">
-              <div class="signature-rank">عقيد /</div>
-              <div class="signature-name">أحمد عاطف</div>
-              <div class="signature-position">مدير إدارة الإطفاء</div>
+          <div class="signature-section-page-five">
+            <div class="date-section">
+              تحريراً في: ${todayFormatted}
+              <div class="date-extra">
+                <span class="user-name-display">${userName}</span>
+              </div>
             </div>
-            
-            <div class="signature-block">
-              <div class="signature-rank">عقيد /</div>
-              <div class="signature-name">ياسر يسري</div>
-              <div class="signature-position">مدير إدارة الوقاية</div>
+
+            <div class="signatures-container">
+             <div class="signature-page-five">
+                <div class="signature-title-page-two">عقيد /</div>
+                <div class="signature-name">ياسر يسري</div>
+                <div class="signature-position-five">مدير إدارة الوقاية</div>
+              </div>
+
+              <div class="signature-page-five">
+                <div class="signature-title-page-two">عقيد /</div>
+                <div class="signature-name">احمد عاطف</div>
+                <div class="signature-position-five">مدير إدارة الإطفاء</div>
+              </div>
             </div>
           </div>
-          
+
           <!-- الاعتماد -->
-          <div class="approval-section">
-            <div class="approval-title">يعتمد ويبلغ للجهات ....</div>
+          <div class="approval-section-five">
+            <div class="approval-title-five">يعتمد ويبلغ للجهات ....</div>
             <div class="approval-signature">
-              <div class="approval-rank">لواء /</div>
+              <div class="approval-rank">لواء/</div>
               <div class="approval-name">( محمد عدلي )</div>
               <div class="approval-position">مدير الإدارة العامة للحماية المدنية بالجيزة</div>
             </div>
           </div>
         </div>
       </div>
-      
-      <script>
-        // طباعة تلقائية بعد التحميل (اختياري)
-        // window.onload = function() { window.print(); };
-      </script>
     </body>
     </html>
   `;
 
   // فتح نافذة جديدة
-  const printWindow = window.open('', '_blank', 'width=800,height=600');
+  const printWindow = window.open('', '_blank', 'width=900,height=700');
   printWindow.document.write(printContent);
   printWindow.document.close();
 
   showNotification("✅ تم فتح صفحة عدم دفع الرسوم");
 }
+
+
 
 
 
@@ -7388,5 +7554,16 @@ window.closeExistingNonPaymentModal = closeExistingNonPaymentModal;
 window.printExistingNonPayment = printExistingNonPayment;
 window.printMonthlyStats = printMonthlyStats;
 window.cancelNonPayment = cancelNonPayment;
+
+// دالة إخفاء الصفحة الخامسة
+function hidePageFive() {
+  const pageFive = Utils.$(".page-five");
+  if (pageFive) {
+    pageFive.style.display = "none";
+    pageFive.classList.remove("active-non-payment");
+    pageFive.setAttribute("data-non-payment", "false");
+  }
+}
+
 window.hidePageFive = hidePageFive;
 window.ensureGizaSuffix = ensureGizaSuffix;
