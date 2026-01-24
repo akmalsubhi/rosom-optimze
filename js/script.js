@@ -1572,25 +1572,36 @@ function applyChanges() {
   const protectionFeeInput =
     parseInt(Utils.getElement("inputProtectionFee", false)?.value) || 0;
 
-  // تحويل الأرقام
-  let activity = NumberConverter.smart(
-    Utils.getElement("inputActivity", false)?.value.trim() || ""
-  );
-  let name = NumberConverter.smart(
-    Utils.getElement("inputName", false)?.value.trim() || ""
-  );
-  let location = NumberConverter.smart(
-    Utils.getElement("inputLocation", false)?.value.trim() || ""
-  );
+  // تحويل الأرقام حسب اختيار المستخدم (احترام الـ numberMode)
+  const activityInput = Utils.getElement("inputActivity", false);
+  const nameInput = Utils.getElement("inputName", false);
+  const locationInput = Utils.getElement("inputLocation", false);
+
+  // قراءة الـ mode اللي المستخدم اختاره لكل حقل
+  const activityMode = activityInput?.dataset.numberMode || "mixed";
+  const nameMode = nameInput?.dataset.numberMode || "mixed";
+  const locationMode = locationInput?.dataset.numberMode || "mixed";
+
+  // تحويل الأرقام فقط إذا كان الـ mode مش "mixed"
+  let activity = activityInput?.value.trim() || "";
+  let name = nameInput?.value.trim() || "";
+  let location = locationInput?.value.trim() || "";
+
+  // تطبيق التحويل فقط إذا المستخدم اختار mode معين
+  if (activityMode !== "mixed") {
+    activity = NumberConverter.smart(activity, activityMode);
+  }
+  if (nameMode !== "mixed") {
+    name = NumberConverter.smart(name, nameMode);
+  }
+  if (locationMode !== "mixed") {
+    location = NumberConverter.smart(location, locationMode);
+  }
 
   // ========== إضافة "- الجيزة" تلقائياً للعنوان ==========
   location = ensureGizaSuffix(location);
 
   // تحديث الحقول
-  const activityInput = Utils.getElement("inputActivity", false);
-  const nameInput = Utils.getElement("inputName", false);
-  const locationInput = Utils.getElement("inputLocation", false);
-
   if (activityInput) activityInput.value = activity;
   if (nameInput) nameInput.value = name;
   if (locationInput) locationInput.value = location;
