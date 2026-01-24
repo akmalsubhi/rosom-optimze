@@ -1475,6 +1475,7 @@ async function openFeesPopup() {
   if (!overlay) return;
 
   overlay.classList.add("active");
+  document.body.classList.add("modal-open"); // منع scroll الشاشة أثناء فتح الـ popup
 
   // تحميل القيم
   const savedUserName = Storage.loadUserName();
@@ -1533,6 +1534,7 @@ function closeFeesPopup() {
   if (!overlay) return;
 
   overlay.classList.remove("active");
+  document.body.classList.remove("modal-open"); // إعادة scroll الشاشة
 
   // تنظيف الاقتراحات
   ["inputActivity", "inputName", "inputLocation"].forEach((id) => {
@@ -4164,12 +4166,14 @@ function closeAllModals() {
 async function openCertificatesModal() {
   const modal = Utils.getElement("certsModal", false);
   if (modal) modal.classList.add("active");
+  document.body.classList.add("modal-open"); // منع scroll الشاشة أثناء فتح الـ modal
   await showCertificatesList();
 }
 
 function closeCertsModal() {
   const modal = Utils.getElement("certsModal", false);
   if (modal) modal.classList.remove("active");
+  document.body.classList.remove("modal-open"); // إعادة scroll الشاشة
 }
 
 async function showCertificatesList() {
@@ -4812,6 +4816,7 @@ function addSearchFixStyles() {
     #certsListContainer {
       flex: 1;
       overflow-y: scroll !important;
+      scrollbar-gutter: stable; /* حجز مكان الـ scrollbar لمنع الاهتزاز */
       min-height: 250px;
       max-height: calc(85vh - 300px);
       padding-left: 10px;
