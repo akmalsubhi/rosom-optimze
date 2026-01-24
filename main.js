@@ -298,9 +298,9 @@ ipcMain.handle('db-search-certificates', async (event, searchTerm) => {
     }
 });
 
-ipcMain.handle('db-get-stats', async () => {
+ipcMain.handle('db-get-stats', async (event, options = {}) => {
     try {
-        return db.getStats();
+        return db.getStats(options);
     } catch (err) {
         console.error('db-get-stats error', err);
         throw err;

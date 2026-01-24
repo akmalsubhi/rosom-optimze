@@ -11,7 +11,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
         getHistory: (id) => ipcRenderer.invoke('db-get-certificate-history', id),
         delete: (id, deletedBy) => ipcRenderer.invoke('db-delete-certificate', { id, deletedBy }),
         search: (term) => ipcRenderer.invoke('db-search-certificates', term),
-        getStats: () => ipcRenderer.invoke('db-get-stats')
+        getStats: (options) => ipcRenderer.invoke('db-get-stats', options)
     },
 
     // Print
@@ -39,9 +39,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.on(channel, callback);
     },
     nonPayment: {
-  create: (certId, data) => ipcRenderer.invoke('non-payment:create', certId, data),
-  get: (id) => ipcRenderer.invoke('non-payment:get', id),
-  getByCertificate: (certId) => ipcRenderer.invoke('non-payment:get-by-certificate', certId),
-  cancel: (certId) => ipcRenderer.invoke('non-payment:cancel', certId)  // ⭐ إضافة جديدة
-}
+        create: (certId, data) => ipcRenderer.invoke('non-payment:create', certId, data),
+        get: (id) => ipcRenderer.invoke('non-payment:get', id),
+        getByCertificate: (certId) => ipcRenderer.invoke('non-payment:get-by-certificate', certId),
+        cancel: (certId) => ipcRenderer.invoke('non-payment:cancel', certId)  // ⭐ إضافة جديدة
+    }
 });

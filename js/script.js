@@ -4613,11 +4613,23 @@ async function performDelete(id) {
 }
 
 // ========== الإحصائيات ==========
-async function showStats() {
+// متغيرات للشهر المختار
+let selectedStatsMonth = new Date().getMonth();
+let selectedStatsYear = new Date().getFullYear();
+
+async function showStats(options = {}) {
   const loader = Loading.data("يتم تحميل الإحصائيات...");
 
+  // استخدام القيم الممررة أو القيم المحفوظة
+  const month = options.month !== undefined ? options.month : selectedStatsMonth;
+  const year = options.year !== undefined ? options.year : selectedStatsYear;
+
+  // حفظ القيم الجديدة
+  selectedStatsMonth = month;
+  selectedStatsYear = year;
+
   try {
-    const stats = await API.certificates.getStats();
+    const stats = await API.certificates.getStats({ month, year });
 
     let modal = Utils.getElement("stats-modal", false);
     if (!modal) {
@@ -4633,6 +4645,29 @@ async function showStats() {
       stats.total > 0
         ? (((stats.total - stats.modified) / stats.total) * 100).toFixed(1)
         : 0;
+
+    // إنشاء خيارات الشهور
+    const arabicMonths = [
+      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+    ];
+
+    const currentYear = new Date().getFullYear();
+    const yearOptions = [];
+    for (let y = currentYear; y >= currentYear - 5; y--) {
+      yearOptions.push(`<option value="${y}" ${y === year ? 'selected' : ''}>${y}</option>`);
+    }
+
+    const monthOptions = arabicMonths.map((name, idx) =>
+      `<option value="${idx}" ${idx === month ? 'selected' : ''}>${name}</option>`
+    ).join('');
+
+    // تحديد class للأرقام الكبيرة
+    const getValueClass = (num) => {
+      if (num >= 100000) return 'stat-value very-large-number';
+      if (num >= 10000) return 'stat-value large-number';
+      return 'stat-value';
+    };
 
     modal.innerHTML = `
       <div class="stats-modal-content">
@@ -4701,8 +4736,18 @@ async function showStats() {
           
           <!-- ========== الإحصائيات الشهرية المعدلة ========== -->
           <div class="stats-section monthly-section" id="monthlyStatsSection">
-            <h3>📅 إجمالي المبالغ المحصلة عن شهر ${stats.monthly.monthName} ${stats.monthly.year}</h3>
-            <p class="monthly-note">* لا تشمل شهادات عدم دفع الرسوم (${toArabicNumber(stats.nonPaymentCount)} شهادة)</p>
+            <div class="monthly-header">
+              <h3>📅 إجمالي المبالغ المحصلة</h3>
+              <div class="month-selector">
+                <select id="statsMonthSelect" onchange="changeStatsMonth()">
+                  ${monthOptions}
+                </select>
+                <select id="statsYearSelect" onchange="changeStatsMonth()">
+                  ${yearOptions.join('')}
+                </select>
+              </div>
+            </div>
+            <p class="monthly-note">* لا تشمل شهادات عدم دفع الرسوم (${toArabicNumber(stats.nonPaymentCount)} شهادة) - شهادات هذا الشهر: ${toArabicNumber(stats.monthly.count)}</p>
             
             <div class="monthly-stats-container">
               <!-- رسوم المحافظة -->
@@ -4884,7 +4929,11 @@ async function printMonthlyStats() {
   const loader = Loading.print("يتم تجهيز الإحصائية الشهرية للطباعة...");
 
   try {
-    const stats = await API.certificates.getStats();
+    // استخدام الشهر والسنة المختارين بدل الشهر الحالي
+    const stats = await API.certificates.getStats({
+      month: selectedStatsMonth,
+      year: selectedStatsYear
+    });
 
     // حساب الإجمالي الكلي
     const grandTotal = stats.monthly.governorateTotal + stats.monthly.ministryTotal;
@@ -5123,6 +5172,19 @@ async function cancelNonPayment(certificateId) {
 function closeStatsModal() {
   const modal = Utils.getElement("stats-modal", false);
   if (modal) modal.classList.remove("active");
+}
+
+// ========== تغيير شهر الإحصائيات ==========
+async function changeStatsMonth() {
+  const monthSelect = Utils.getElement("statsMonthSelect", false);
+  const yearSelect = Utils.getElement("statsYearSelect", false);
+
+  if (!monthSelect || !yearSelect) return;
+
+  const month = parseInt(monthSelect.value);
+  const year = parseInt(yearSelect.value);
+
+  await showStats({ month, year });
 }
 
 async function refreshStats() {
@@ -7231,6 +7293,49 @@ function addMonthlyStatsStyles() {
       gap: 20px;
     }
     
+    /* ========== Month Selector ========== */
+    .monthly-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    
+    .monthly-header h3 {
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+    }
+    
+    .month-selector {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .month-selector select {
+      padding: 8px 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      color: #1e293b;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .month-selector select:hover {
+      border-color: #667eea;
+    }
+    
+    .month-selector select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+    }
+    
     .monthly-category {
       background: white;
       border-radius: 10px;
@@ -7525,6 +7630,7 @@ window.performDelete = performDelete;
 // الإحصائيات
 window.showStats = showStats;
 window.closeStatsModal = closeStatsModal;
+window.changeStatsMonth = changeStatsMonth;
 window.refreshStats = refreshStats;
 window.exportStats = exportStats;
 

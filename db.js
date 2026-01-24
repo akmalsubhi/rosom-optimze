@@ -11,28 +11,28 @@ let db;
 
 // ========== دالة تحديد مسار البيانات ==========
 function setDataPath(customPath) {
-    dataDir = customPath;
-    dbPath = path.join(dataDir, 'app.db');
-    
-    console.log('✅ Database path set to:', dbPath);
-    
-    if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
-    }
+  dataDir = customPath;
+  dbPath = path.join(dataDir, 'app.db');
+
+  console.log('✅ Database path set to:', dbPath);
+
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
 }
 
 // ========== Fallback لو مفيش مسار محدد ==========
 function ensurePath() {
-    if (!dataDir) {
-        dataDir = path.join(__dirname, 'data');
-        dbPath = path.join(dataDir, 'app.db');
-        
-        if (!fs.existsSync(dataDir)) {
-            fs.mkdirSync(dataDir, { recursive: true });
-        }
-        
-        console.log('⚠️ Using fallback path:', dbPath);
+  if (!dataDir) {
+    dataDir = path.join(__dirname, 'data');
+    dbPath = path.join(dataDir, 'app.db');
+
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
     }
+
+    console.log('⚠️ Using fallback path:', dbPath);
+  }
 }
 
 
@@ -81,9 +81,9 @@ function fixOldCertificatesTotals() {
 
 async function init() {
   ensurePath();  // ⭐ سطر جديد - التأكد من وجود مسار
-  
+
   console.log('🔄 Initializing database at:', dbPath);
-  
+
   SQL = await initSqlJs();
   if (fs.existsSync(dbPath)) {
     console.log('📂 Loading existing database...');
@@ -97,7 +97,7 @@ async function init() {
     fixOldCertificatesTotals();
     save();
   }
-  
+
   console.log('✅ Database initialized successfully');
 }
 
@@ -675,13 +675,13 @@ function getAllCertificates(options = {}) {
  */
 function createNonPaymentRecord(certificateId, data) {
   const now = Date.now();
-  
+
   try {
     const cert = getCertificateById(certificateId);
     if (!cert) {
       throw new Error('الشهادة غير موجودة');
     }
-    
+
     const stmt = db.prepare(`INSERT INTO non_payment_records (
       certificate_id,
       incoming_number,
@@ -695,7 +695,7 @@ function createNonPaymentRecord(certificateId, data) {
       created_by,
       status
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active');`);
-    
+
     stmt.bind([
       certificateId,
       data.incoming_number || '',
@@ -708,10 +708,10 @@ function createNonPaymentRecord(certificateId, data) {
       now,
       data.created_by || ''
     ]);
-    
+
     stmt.step();
     stmt.free();
-    
+
     // الحصول على ID السجل الجديد
     const idStmt = db.prepare('SELECT last_insert_rowid() AS id;');
     let nonPaymentId = null;
@@ -719,7 +719,7 @@ function createNonPaymentRecord(certificateId, data) {
       nonPaymentId = idStmt.get()[0];
     }
     idStmt.free();
-    
+
     // تحديث الشهادة
     const updateStmt = db.prepare(`
       UPDATE certificates 
@@ -729,9 +729,9 @@ function createNonPaymentRecord(certificateId, data) {
     updateStmt.bind([nonPaymentId, now, certificateId]);
     updateStmt.step();
     updateStmt.free();
-    
+
     save();
-    
+
     return {
       id: nonPaymentId,
       certificate_id: certificateId,
@@ -868,7 +868,7 @@ function deleteCertificate(id, deletedBy = '') {
  */
 function cancelNonPayment(certificateId) {
   const now = Date.now();
-  
+
   try {
     // تحديث سجل عدم الدفع
     const updateNpStmt = db.prepare(`
@@ -879,7 +879,7 @@ function cancelNonPayment(certificateId) {
     updateNpStmt.bind([now, certificateId]);
     updateNpStmt.step();
     updateNpStmt.free();
-    
+
     // تحديث الشهادة
     const updateCertStmt = db.prepare(`
       UPDATE certificates 
@@ -889,9 +889,9 @@ function cancelNonPayment(certificateId) {
     updateCertStmt.bind([now, certificateId]);
     updateCertStmt.step();
     updateCertStmt.free();
-    
+
     save();
-    
+
     return { success: true };
   } catch (err) {
     console.error('cancelNonPayment error:', err);
@@ -936,15 +936,23 @@ function searchCertificates(searchTerm) {
 /**
  * إحصائيات سريعة
  * يستخدم قاعدة البيانات المحمّلة في `db` (SQL.js)
+ * @param {Object} options - خيارات اختيارية
+ * @param {number} options.month - الشهر (0-11) - اختياري
+ * @param {number} options.year - السنة - اختياري
  */
-async function getStats() {
+async function getStats(options = {}) {
   if (!db) throw new Error('Database not initialized');
 
   const now = new Date();
+
+  // ========== تحديد الشهر والسنة (الحالي أو المحدد) ==========
+  const selectedMonth = options.month !== undefined ? options.month : now.getMonth();
+  const selectedYear = options.year !== undefined ? options.year : now.getFullYear();
+
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()).getTime();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
+  const monthStart = new Date(selectedYear, selectedMonth, 1).getTime();
+  const monthEnd = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999).getTime();
 
   const querySingle = (sql, params = []) => {
     const stmt = db.prepare(sql);
@@ -1037,13 +1045,15 @@ async function getStats() {
     LIMIT 5
   `);
 
-  // اسم الشهر الحالي بالعربية
+  // اسم الشهر المحدد بالعربية
   const arabicMonths = [
     'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
     'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
   ];
-  const currentMonthName = arabicMonths[now.getMonth()];
-  const currentYear = now.getFullYear();
+  const selectedMonthName = arabicMonths[selectedMonth];
+
+  // هل هذا الشهر الحالي؟
+  const isCurrentMonth = selectedMonth === now.getMonth() && selectedYear === now.getFullYear();
 
   return {
     // الإحصائيات الأساسية
@@ -1052,43 +1062,45 @@ async function getStats() {
     today: today.count || 0,
     thisWeek: thisWeek.count || 0,
     thisMonth: thisMonth.count || 0,
-    
+
     // الإحصائيات المالية الكلية
     totalGovernorate: Math.round(financial.totalGovernorate || 0),
     totalMinistry: Math.round(financial.totalMinistry || 0),
     grandTotal: Math.round(financial.grandTotal || 0),
     averageValue: Math.round(financial.averageValue || 0),
-    
+
     // إحصائيات التدريب
     totalPersons: training.totalPersons || 0,
     totalArea: Math.round(training.totalArea || 0),
     avgPersons: Math.round(training.avgPersons || 0),
-    
+
     // ========== الإحصائيات الشهرية الجديدة ==========
     monthly: {
-      monthName: currentMonthName,
-      year: currentYear,
+      monthName: selectedMonthName,
+      year: selectedYear,
+      month: selectedMonth, // إضافة رقم الشهر (0-11)
+      isCurrentMonth: isCurrentMonth, // هل هذا الشهر الحالي؟
       count: monthlyStats.monthlyCount || 0,
-      
+
       // رسوم المحافظة
       trainingFee: Math.round(monthlyStats.monthlyTrainingFee || 0),
       consultantFee: Math.round(monthlyStats.monthlyConsultantFee || 0),
       evacuationFee: Math.round(monthlyStats.monthlyEvacuationFee || 0),
       inspectionFee: Math.round(monthlyStats.monthlyInspectionFee || 0),
       governorateTotal: Math.round(monthlyStats.monthlyGovernorateTotal || 0),
-      
+
       // رسوم الوزارة
       ministryPersonsFee: Math.round(monthlyStats.monthlyMinistryPersonsFee || 0),
       areaFee: Math.round(monthlyStats.monthlyAreaFee || 0),
       ministryTotal: Math.round(monthlyStats.monthlyMinistryTotal || 0),
-      
+
       // إجمالي الأفراد
       personsCount: monthlyStats.monthlyPersonsCount || 0
     },
-    
+
     // عدد شهادات عدم الدفع
     nonPaymentCount: nonPaymentCount.count || 0,
-    
+
     // المستخدمون والتعديلات
     topUsers: topUsers,
     recentEdits: recentEdits

@@ -2024,10 +2024,26 @@ html {
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: clamp(18px, 4vw, 28px);
+  /* حجم متجاوب مع حجم الشاشة */
   font-weight: bold;
   color: #2c3e50;
   margin-bottom: 5px;
+  word-break: break-word;
+  line-height: 1.2;
+  min-height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* حجم خط أصغر للأرقام الكبيرة */
+.stat-value.large-number {
+  font-size: clamp(14px, 3vw, 22px);
+}
+
+.stat-value.very-large-number {
+  font-size: clamp(12px, 2.5vw, 18px);
 }
 
 .stat-label {
