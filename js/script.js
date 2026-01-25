@@ -8349,4 +8349,4 @@ document.querySelectorAll('#inputActivity, #inputName, #inputLocation, #inputAre
   }
 });
 
-window.ensureGizaSuffix = ensureGizaSuffix;
+

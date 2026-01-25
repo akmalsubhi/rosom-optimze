@@ -162,6 +162,9 @@ function ensurePath() {
 }
 
 
+
+
+
 function fixOldCertificatesTotals() {
   try {
     const certs = getAllCertificates({ status: 'active' });
@@ -220,6 +223,7 @@ async function init() {
     console.log('📝 Creating new database...');
     db = new SQL.Database();
     createTables();
+
     fixOldCertificatesTotals();
     save();
   }
@@ -447,6 +451,7 @@ function save(immediate = false) {
   }
 }
 
+// حفظ فوري إجباري (للإغلاق أو العمليات الحرجة)
 // حفظ فوري إجباري (للإغلاق أو العمليات الحرجة)
 function saveImmediate() {
   BatchSave.flush();
@@ -799,6 +804,7 @@ function getAllCertificates(options = {}) {
   let query = 'SELECT * FROM certificates';
   const conditions = [];
   const params = [];
+
 
   // فلترة حسب الحالة
   if (options.status) {
@@ -1271,6 +1277,10 @@ function searchCertificates(searchTerm, options = {}) {
  */
 async function getStats(options = {}) {
   if (!db) throw new Error('Database not initialized');
+
+  // ✅ إعطاء فرصة للـ UI يتنفس (Yield to Main Thread)
+  // هذا يمنع تجمد الواجهة تماماً أثناء الحسابات الثقيلة
+  await new Promise(resolve => setTimeout(resolve, 0));
 
   const now = new Date();
 
