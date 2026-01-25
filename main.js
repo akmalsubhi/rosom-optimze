@@ -78,6 +78,15 @@ function createWindow() {
             event.preventDefault();
             mainWindow.webContents.send('shortcut-search');
         }
+        // ⭐ اختصارات Undo/Redo
+        if (input.control && !input.shift && input.key.toLowerCase() === 'z') {
+            event.preventDefault();
+            mainWindow.webContents.send('shortcut-undo');
+        }
+        if (input.control && (input.key.toLowerCase() === 'y' || (input.shift && input.key.toLowerCase() === 'z'))) {
+            event.preventDefault();
+            mainWindow.webContents.send('shortcut-redo');
+        }
     });
 }
 
@@ -188,6 +197,22 @@ app.whenReady().then(initializeApp);
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
+});
+
+// ⭐ حفظ البيانات قبل إغلاق التطبيق
+app.on('before-quit', () => {
+    console.log('🔄 Saving database before quit...');
+    try {
+        if (db.saveImmediate) {
+            db.saveImmediate();
+        }
+        if (db.BatchSave) {
+            db.BatchSave.cleanup();
+        }
+        console.log('✅ Database saved successfully');
+    } catch (err) {
+        console.error('❌ Error saving database on quit:', err);
+    }
 });
 
 app.on('activate', () => {

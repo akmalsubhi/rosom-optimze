@@ -9,6 +9,132 @@ let dbPath = null;
 let SQL;
 let db;
 
+// ========== نظام التخزين المؤقت (Query Cache) ==========
+const QueryCache = {
+  cache: new Map(),
+  maxSize: 100,        // الحد الأقصى للعناصر
+  defaultTTL: 30000,   // 30 ثانية
+
+  // الحصول على قيمة من الـ cache
+  get(key) {
+    const item = this.cache.get(key);
+    if (!item) return null;
+
+    // التحقق من انتهاء الصلاحية
+    if (Date.now() > item.expiry) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return item.value;
+  },
+
+  // حفظ قيمة في الـ cache
+  set(key, value, ttl = this.defaultTTL) {
+    // حذف القديم إذا وصلنا للحد الأقصى
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
+
+    this.cache.set(key, {
+      value,
+      expiry: Date.now() + ttl
+    });
+  },
+
+  // مسح الـ cache (عند تعديل البيانات)
+  invalidate(pattern = null) {
+    if (!pattern) {
+      this.cache.clear();
+      return;
+    }
+
+    // مسح المفاتيح التي تحتوي على النمط
+    for (const key of this.cache.keys()) {
+      if (key.includes(pattern)) {
+        this.cache.delete(key);
+      }
+    }
+  },
+
+  // إحصائيات الـ cache
+  stats() {
+    return {
+      size: this.cache.size,
+      maxSize: this.maxSize
+    };
+  }
+};
+
+// ========== نظام الحفظ المجمّع (Batch Save) ==========
+const BatchSave = {
+  pending: false,
+  timeout: null,
+  delay: 500,  // تأخير 500ms قبل الحفظ
+
+  // جدولة الحفظ
+  schedule() {
+    if (this.timeout) {
+      clearTimeout(this.timeout);
+    }
+
+    this.pending = true;
+    this.timeout = setTimeout(() => {
+      this.flush();
+    }, this.delay);
+  },
+
+  // تنفيذ الحفظ الفوري
+  flush() {
+    if (!this.pending) return;
+
+    try {
+      const binary = db.export();
+      const buffer = Buffer.from(binary);
+      fs.writeFileSync(dbPath, buffer);
+      this.pending = false;
+      console.log('💾 Database saved (batch)');
+    } catch (err) {
+      console.error('BatchSave error:', err);
+    }
+
+    if (this.timeout) {
+      clearTimeout(this.timeout);
+      this.timeout = null;
+    }
+  },
+
+  // التنظيف عند إيقاف التطبيق
+  cleanup() {
+    this.flush();
+  }
+};
+
+// ========== تتبع الأداء ==========
+const PerformanceTracker = {
+  queries: [],
+  maxQueries: 50,
+
+  track(name, duration) {
+    this.queries.push({ name, duration, time: Date.now() });
+    if (this.queries.length > this.maxQueries) {
+      this.queries.shift();
+    }
+  },
+
+  getStats() {
+    if (this.queries.length === 0) return { avg: 0, max: 0, count: 0 };
+
+    const durations = this.queries.map(q => q.duration);
+    return {
+      avg: Math.round(durations.reduce((a, b) => a + b, 0) / durations.length),
+      max: Math.max(...durations),
+      count: this.queries.length
+    };
+  }
+};
+
 // ========== دالة تحديد مسار البيانات ==========
 function setDataPath(customPath) {
   dataDir = customPath;
@@ -305,7 +431,25 @@ function createIndexes() {
 }
 
 
-function save() {
+function save(immediate = false) {
+  // مسح الـ cache عند تعديل البيانات
+  QueryCache.invalidate();
+
+  if (immediate) {
+    // حفظ فوري للعمليات الحرجة
+    const binary = db.export();
+    const buffer = Buffer.from(binary);
+    fs.writeFileSync(dbPath, buffer);
+    console.log('💾 Database saved (immediate)');
+  } else {
+    // حفظ مجمّع للعمليات المتكررة
+    BatchSave.schedule();
+  }
+}
+
+// حفظ فوري إجباري (للإغلاق أو العمليات الحرجة)
+function saveImmediate() {
+  BatchSave.flush();
   const binary = db.export();
   const buffer = Buffer.from(binary);
   fs.writeFileSync(dbPath, buffer);
@@ -1060,9 +1204,27 @@ function cancelNonPayment(certificateId) {
 
 
 /**
- * البحث في الشهادات
+ * البحث في الشهادات - محسّن للأداء
+ * @param {string} searchTerm - كلمة البحث
+ * @param {Object} options - خيارات إضافية
+ * @param {number} options.limit - الحد الأقصى للنتائج (افتراضي 200)
+ * @param {number} options.offset - البداية (للـ pagination)
  */
-function searchCertificates(searchTerm) {
+function searchCertificates(searchTerm, options = {}) {
+  const startTime = Date.now();
+  const limit = options.limit || 200;  // حد افتراضي لتحسين الأداء
+  const offset = options.offset || 0;
+
+  // مفتاح الـ cache
+  const cacheKey = `search:${searchTerm}:${limit}:${offset}`;
+
+  // التحقق من الـ cache أولاً
+  const cached = QueryCache.get(cacheKey);
+  if (cached) {
+    console.log(`🚀 Search cache hit: "${searchTerm}" (${Date.now() - startTime}ms)`);
+    return cached;
+  }
+
   const result = [];
   const searchPattern = `%${searchTerm}%`;
 
@@ -1074,15 +1236,25 @@ function searchCertificates(searchTerm) {
         activity LIKE ? OR 
         location LIKE ?
       )
-      ORDER BY created_at DESC;
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?;
     `);
-    stmt.bind([searchPattern, searchPattern, searchPattern]);
+    stmt.bind([searchPattern, searchPattern, searchPattern, limit, offset]);
     while (stmt.step()) {
       const row = stmt.getAsObject();
       row.is_modified = row.is_modified === 1;
       result.push(row);
     }
     stmt.free();
+
+    // حفظ في الـ cache (لمدة 15 ثانية للبحث)
+    QueryCache.set(cacheKey, result, 15000);
+
+    // تتبع الأداء
+    const duration = Date.now() - startTime;
+    PerformanceTracker.track('searchCertificates', duration);
+    console.log(`🔍 Search: "${searchTerm}" returned ${result.length} results (${duration}ms)`);
+
   } catch (err) {
     console.error('searchCertificates error:', err);
   }
@@ -1268,7 +1440,7 @@ async function getStats(options = {}) {
 
 module.exports = {
   init,
-  setDataPath,  // ⭐ إضافة جديدة
+  setDataPath,
   // الملاحظات
   addNote,
   getNotes,
@@ -1288,7 +1460,12 @@ module.exports = {
   normalizeValue,
   // ⭐ دوال جديدة للأداء
   getUniqueValues,
-  getCertificatesCount
+  getCertificatesCount,
+  // ⭐ أدوات تحسين الأداء
+  saveImmediate,        // حفظ فوري عند إغلاق التطبيق
+  QueryCache,           // للتحكم في الـ cache
+  BatchSave,            // للتحكم في الحفظ المجمّع
+  PerformanceTracker    // لمراقبة الأداء
 };
 
 

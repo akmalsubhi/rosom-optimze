@@ -107,6 +107,333 @@ const AppState = {
   },
 };
 
+// ========== نظام التراجع والإعادة (Undo/Redo) ==========
+const UndoRedoSystem = {
+  undoStack: [],
+  redoStack: [],
+  maxHistory: 50, // الحد الأقصى للسجل
+  isPerformingAction: false, // منع التكرار أثناء الـ undo/redo
+
+  // حفظ الحالة الحالية
+  saveState(state, actionName = '') {
+    if (this.isPerformingAction) return;
+
+    // إنشاء نسخة عميقة من الحالة
+    const stateCopy = JSON.parse(JSON.stringify(state));
+    stateCopy._actionName = actionName;
+    stateCopy._timestamp = Date.now();
+
+    this.undoStack.push(stateCopy);
+
+    // حذف القديم إذا تجاوزنا الحد
+    if (this.undoStack.length > this.maxHistory) {
+      this.undoStack.shift();
+    }
+
+    // مسح الـ redo stack عند إضافة حالة جديدة
+    this.redoStack = [];
+
+    this.updateUI();
+  },
+
+  // التراجع
+  undo(getCurrentState, applyState) {
+    if (!this.canUndo()) return null;
+
+    this.isPerformingAction = true;
+
+    // حفظ الحالة الحالية في redo
+    const currentState = getCurrentState();
+    this.redoStack.push(JSON.parse(JSON.stringify(currentState)));
+
+    // استرجاع الحالة السابقة
+    const previousState = this.undoStack.pop();
+    applyState(previousState);
+
+    this.isPerformingAction = false;
+    this.updateUI();
+
+    return previousState;
+  },
+
+  // الإعادة
+  redo(getCurrentState, applyState) {
+    if (!this.canRedo()) return null;
+
+    this.isPerformingAction = true;
+
+    // حفظ الحالة الحالية في undo
+    const currentState = getCurrentState();
+    this.undoStack.push(JSON.parse(JSON.stringify(currentState)));
+
+    // استرجاع الحالة من redo
+    const nextState = this.redoStack.pop();
+    applyState(nextState);
+
+    this.isPerformingAction = false;
+    this.updateUI();
+
+    return nextState;
+  },
+
+  canUndo() {
+    return this.undoStack.length > 0;
+  },
+
+  canRedo() {
+    return this.redoStack.length > 0;
+  },
+
+  // مسح السجل
+  clear() {
+    this.undoStack = [];
+    this.redoStack = [];
+    this.updateUI();
+  },
+
+  // تحديث واجهة الأزرار
+  updateUI() {
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
+
+    if (undoBtn) {
+      undoBtn.disabled = !this.canUndo();
+      undoBtn.title = this.canUndo()
+        ? `تراجع (${this.undoStack.length})`
+        : 'لا يوجد ما يمكن التراجع عنه';
+    }
+
+    if (redoBtn) {
+      redoBtn.disabled = !this.canRedo();
+      redoBtn.title = this.canRedo()
+        ? `إعادة (${this.redoStack.length})`
+        : 'لا يوجد ما يمكن إعادته';
+    }
+  },
+
+  // عدد العمليات
+  getStats() {
+    return {
+      undoCount: this.undoStack.length,
+      redoCount: this.redoStack.length
+    };
+  }
+};
+
+// ========== سجل البحث ==========
+const SearchHistory = {
+  storageKey: 'searchHistory',
+  maxItems: 10,
+
+  // جلب السجل
+  getAll() {
+    try {
+      const saved = localStorage.getItem(this.storageKey);
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error('Error loading search history:', e);
+      return [];
+    }
+  },
+
+  // إضافة بحث جديد
+  add(term, type = 'general') {
+    if (!term || term.trim().length < 2) return;
+
+    const history = this.getAll();
+    const normalizedTerm = term.trim();
+
+    // إزالة البحث إذا كان موجوداً بالفعل (لتجنب التكرار)
+    const filtered = history.filter(item =>
+      !(item.term === normalizedTerm && item.type === type)
+    );
+
+    // إضافة في البداية
+    filtered.unshift({
+      term: normalizedTerm,
+      type,
+      timestamp: Date.now()
+    });
+
+    // الاحتفاظ بآخر N عنصر
+    const trimmed = filtered.slice(0, this.maxItems);
+
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(trimmed));
+    } catch (e) {
+      console.error('Error saving search history:', e);
+    }
+
+    return trimmed;
+  },
+
+  // جلب بحث حسب النوع
+  getByType(type) {
+    return this.getAll().filter(item => item.type === type);
+  },
+
+  // حذف عنصر
+  remove(term, type) {
+    const history = this.getAll();
+    const filtered = history.filter(item =>
+      !(item.term === term && item.type === type)
+    );
+
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(filtered));
+    } catch (e) {
+      console.error('Error removing from search history:', e);
+    }
+
+    return filtered;
+  },
+
+  // مسح السجل
+  clear() {
+    try {
+      localStorage.removeItem(this.storageKey);
+    } catch (e) {
+      console.error('Error clearing search history:', e);
+    }
+  },
+
+  // عرض السجل في dropdown
+  renderDropdown(containerId, onSelect) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const history = this.getAll();
+
+    if (history.length === 0) {
+      container.innerHTML = '<div class="search-history-empty">لا يوجد سجل بحث</div>';
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="search-history-header">
+        <span>البحث الأخير</span>
+        <button onclick="SearchHistory.clear(); SearchHistory.renderDropdown('${containerId}')" class="btn-clear-history">مسح</button>
+      </div>
+      <div class="search-history-list">
+        ${history.map(item => `
+          <div class="search-history-item" data-term="${item.term}" data-type="${item.type}">
+            <span class="history-icon">🕐</span>
+            <span class="history-term">${item.term}</span>
+            <button class="btn-remove-history" onclick="event.stopPropagation(); SearchHistory.remove('${item.term}', '${item.type}'); SearchHistory.renderDropdown('${containerId}')">×</button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    // إضافة event listeners للنقر
+    container.querySelectorAll('.search-history-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const term = el.dataset.term;
+        if (onSelect) onSelect(term, el.dataset.type);
+      });
+    });
+  }
+};
+
+// ========== تحسينات الواجهة (منع التجمد) ==========
+const UIOptimizer = {
+  // تنفيذ مهمة في وقت الفراغ (لا يجمد الواجهة)
+  scheduleTask(callback, options = {}) {
+    const { priority = 'normal', timeout = 1000 } = options;
+
+    if ('requestIdleCallback' in window) {
+      return requestIdleCallback(callback, { timeout });
+    } else {
+      // Fallback للمتصفحات القديمة
+      return setTimeout(callback, priority === 'high' ? 0 : 16);
+    }
+  },
+
+  // إلغاء مهمة مجدولة
+  cancelTask(taskId) {
+    if ('cancelIdleCallback' in window) {
+      cancelIdleCallback(taskId);
+    } else {
+      clearTimeout(taskId);
+    }
+  },
+
+  // تقسيم مصفوفة كبيرة لمعالجة تدريجية (لا يجمد الواجهة)
+  async processInChunks(items, processor, chunkSize = 100) {
+    const results = [];
+
+    for (let i = 0; i < items.length; i += chunkSize) {
+      const chunk = items.slice(i, i + chunkSize);
+
+      // معالجة الـ chunk
+      for (const item of chunk) {
+        results.push(await processor(item));
+      }
+
+      // إعطاء الواجهة فرصة للتحديث
+      if (i + chunkSize < items.length) {
+        await this.yieldToMain();
+      }
+    }
+
+    return results;
+  },
+
+  // إعطاء فرصة للواجهة للتحديث
+  yieldToMain() {
+    return new Promise(resolve => {
+      if ('scheduler' in window && 'yield' in window.scheduler) {
+        window.scheduler.yield().then(resolve);
+      } else {
+        setTimeout(resolve, 0);
+      }
+    });
+  },
+
+  // تحسين الـ scroll (منع جلب البيانات الزائد)
+  createVirtualScroller(container, items, renderItem, itemHeight = 50) {
+    const visibleCount = Math.ceil(container.clientHeight / itemHeight) + 2;
+    let scrollTop = 0;
+
+    const render = () => {
+      const startIndex = Math.floor(scrollTop / itemHeight);
+      const endIndex = Math.min(startIndex + visibleCount, items.length);
+
+      const visibleItems = items.slice(startIndex, endIndex);
+      const paddingTop = startIndex * itemHeight;
+      const totalHeight = items.length * itemHeight;
+
+      container.innerHTML = `
+        <div style="height: ${totalHeight}px; padding-top: ${paddingTop}px;">
+          ${visibleItems.map(renderItem).join('')}
+        </div>
+      `;
+    };
+
+    container.addEventListener('scroll', Utils.throttle(() => {
+      scrollTop = container.scrollTop;
+      render();
+    }, 50));
+
+    render();
+
+    return { render, update: (newItems) => { items = newItems; render(); } };
+  },
+
+  // مراقبة استخدام الذاكرة
+  monitorMemory() {
+    if ('memory' in performance) {
+      const memory = performance.memory;
+      return {
+        usedJS: Math.round(memory.usedJSHeapSize / 1048576), // MB
+        totalJS: Math.round(memory.totalJSHeapSize / 1048576),
+        limit: Math.round(memory.jsHeapSizeLimit / 1048576)
+      };
+    }
+    return null;
+  }
+};
+
 // ========== دوال المساعدة (Utilities) ==========
 const Utils = {
   /**
@@ -7831,4 +8158,96 @@ function hidePageFive() {
 }
 
 window.hidePageFive = hidePageFive;
+
+// ========== الأنظمة الجديدة ==========
+window.UndoRedoSystem = UndoRedoSystem;
+window.SearchHistory = SearchHistory;
+window.UIOptimizer = UIOptimizer;
+
+// ========== دوال Undo/Redo للحالة ==========
+// تحصل على حالة الحقول الحالية
+function getCurrentFormState() {
+  return {
+    activity: Utils.getElement('inputActivity', false)?.value || '',
+    name: Utils.getElement('inputName', false)?.value || '',
+    location: Utils.getElement('inputLocation', false)?.value || '',
+    area: Utils.getElement('inputArea', false)?.value || '',
+    persons: Utils.getElement('inputPersons', false)?.value || '',
+    consultant: Utils.getElement('inputConsultant', false)?.value || '',
+    evacuation: Utils.getElement('inputEvacuation', false)?.value || '',
+    inspection: Utils.getElement('inputInspection', false)?.value || '',
+    protectionFee: Utils.getElement('inputProtectionFee', false)?.value || '',
+    userName: Utils.getElement('inputUserName', false)?.value || ''
+  };
+}
+
+// تطبيق حالة على الحقول
+function applyFormState(state) {
+  const fields = {
+    inputActivity: state.activity,
+    inputName: state.name,
+    inputLocation: state.location,
+    inputArea: state.area,
+    inputPersons: state.persons,
+    inputConsultant: state.consultant,
+    inputEvacuation: state.evacuation,
+    inputInspection: state.inspection,
+    inputProtectionFee: state.protectionFee,
+    inputUserName: state.userName
+  };
+
+  Object.entries(fields).forEach(([id, value]) => {
+    const input = Utils.getElement(id, false);
+    if (input && value !== undefined) {
+      input.value = value;
+    }
+  });
+
+  // تحديث العرض
+  updateCalcPreview();
+}
+
+// تنفيذ Undo
+function performUndo() {
+  const result = UndoRedoSystem.undo(getCurrentFormState, applyFormState);
+  if (result) {
+    showNotification('↩️ تم التراجع', 'info');
+  } else {
+    showNotification('لا يوجد ما يمكن التراجع عنه', 'warning');
+  }
+}
+
+// تنفيذ Redo
+function performRedo() {
+  const result = UndoRedoSystem.redo(getCurrentFormState, applyFormState);
+  if (result) {
+    showNotification('↪️ تم الإعادة', 'info');
+  } else {
+    showNotification('لا يوجد ما يمكن إعادته', 'warning');
+  }
+}
+
+// ربط اختصارات لوحة المفاتيح
+if (typeof API !== 'undefined' && API.onShortcut) {
+  API.onShortcut('shortcut-undo', performUndo);
+  API.onShortcut('shortcut-redo', performRedo);
+}
+
+window.performUndo = performUndo;
+window.performRedo = performRedo;
+window.getCurrentFormState = getCurrentFormState;
+window.applyFormState = applyFormState;
+
+// حفظ الحالة عند تغيير الحقول (مع debounce)
+const saveStateDebounced = Utils.debounce(() => {
+  UndoRedoSystem.saveState(getCurrentFormState(), 'تغيير الحقول');
+}, 500);
+
+// إضافة listeners لحفظ الحالة عند التغيير
+document.querySelectorAll('#inputActivity, #inputName, #inputLocation, #inputArea, #inputPersons, #inputConsultant, #inputEvacuation, #inputInspection, #inputProtectionFee, #inputUserName').forEach(input => {
+  if (input) {
+    input.addEventListener('input', saveStateDebounced);
+  }
+});
+
 window.ensureGizaSuffix = ensureGizaSuffix;
