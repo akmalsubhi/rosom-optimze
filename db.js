@@ -259,6 +259,49 @@ function migrateDatabase() {
   } catch (err) {
     console.log('ℹ️ تحديث البيانات:', err.message || 'تم');
   }
+
+  // ========== إنشاء Indexes للبحث السريع ==========
+  createIndexes();
+}
+
+/**
+ * إنشاء Indexes للبحث السريع - مهم جداً للبيانات الضخمة
+ */
+function createIndexes() {
+  const indexes = [
+    // فهرس للحالة - مهم جداً لفلترة الشهادات النشطة
+    { name: 'idx_certificates_status', sql: 'CREATE INDEX IF NOT EXISTS idx_certificates_status ON certificates(status)' },
+
+    // فهرس للتاريخ - للبحث بالتاريخ والترتيب
+    { name: 'idx_certificates_created', sql: 'CREATE INDEX IF NOT EXISTS idx_certificates_created ON certificates(created_at DESC)' },
+
+    // فهرس مركب للحالة والتاريخ - الأكثر استخداماً
+    { name: 'idx_certificates_status_created', sql: 'CREATE INDEX IF NOT EXISTS idx_certificates_status_created ON certificates(status, created_at DESC)' },
+
+    // فهارس للبحث النصي
+    { name: 'idx_certificates_activity', sql: 'CREATE INDEX IF NOT EXISTS idx_certificates_activity ON certificates(activity)' },
+    { name: 'idx_certificates_name', sql: 'CREATE INDEX IF NOT EXISTS idx_certificates_name ON certificates(name)' },
+    { name: 'idx_certificates_location', sql: 'CREATE INDEX IF NOT EXISTS idx_certificates_location ON certificates(location)' },
+
+    // فهرس للشهادات المعدلة
+    { name: 'idx_certificates_modified', sql: 'CREATE INDEX IF NOT EXISTS idx_certificates_modified ON certificates(is_modified)' },
+
+    // فهرس لسجل التعديلات
+    { name: 'idx_history_cert_id', sql: 'CREATE INDEX IF NOT EXISTS idx_history_cert_id ON certificate_history(certificate_id)' },
+
+    // فهرس لسجلات عدم الدفع
+    { name: 'idx_non_payment_cert_id', sql: 'CREATE INDEX IF NOT EXISTS idx_non_payment_cert_id ON non_payment_records(certificate_id)' }
+  ];
+
+  indexes.forEach(index => {
+    try {
+      db.run(index.sql);
+    } catch (err) {
+      // الفهرس موجود بالفعل - لا مشكلة
+    }
+  });
+
+  console.log('✅ تم إنشاء/التحقق من الفهارس (Indexes)');
 }
 
 
@@ -640,15 +683,33 @@ function getAllCertificates(options = {}) {
     params.push(`%${options.searchName}%`);
   }
 
+  // فلترة حسب النشاط
+  if (options.searchActivity) {
+    conditions.push('activity LIKE ?');
+    params.push(`%${options.searchActivity}%`);
+  }
+
+  // فلترة حسب العنوان
+  if (options.searchLocation) {
+    conditions.push('location LIKE ?');
+    params.push(`%${options.searchLocation}%`);
+  }
+
   if (conditions.length > 0) {
     query += ' WHERE ' + conditions.join(' AND ');
   }
 
   query += ' ORDER BY created_at DESC';
 
+  // ⭐ Pagination - مهم جداً للبيانات الضخمة
   if (options.limit) {
     query += ' LIMIT ?';
     params.push(options.limit);
+
+    if (options.offset) {
+      query += ' OFFSET ?';
+      params.push(options.offset);
+    }
   }
 
   const result = [];
@@ -668,6 +729,102 @@ function getAllCertificates(options = {}) {
   }
 
   return result;
+}
+
+/**
+ * ⭐ جلب القيم الفريدة مباشرة من SQL - للـ Autocomplete
+ * هذه الدالة أسرع بكثير من تحميل كل الشهادات
+ */
+function getUniqueValues(column, options = {}) {
+  const validColumns = ['activity', 'name', 'location'];
+  if (!validColumns.includes(column)) {
+    console.error('Invalid column for getUniqueValues:', column);
+    return [];
+  }
+
+  let query = `SELECT DISTINCT ${column} FROM certificates WHERE ${column} IS NOT NULL AND ${column} != ''`;
+  const params = [];
+
+  // فلترة حسب الحالة
+  if (options.status) {
+    query += ' AND status = ?';
+    params.push(options.status);
+  }
+
+  query += ` ORDER BY ${column} ASC`;
+
+  // حد أقصى للنتائج (للأمان)
+  if (options.limit) {
+    query += ' LIMIT ?';
+    params.push(options.limit);
+  }
+
+  const result = [];
+  try {
+    const stmt = db.prepare(query);
+    if (params.length > 0) {
+      stmt.bind(params);
+    }
+    while (stmt.step()) {
+      const row = stmt.get();
+      if (row[0]) {
+        // إزالة النقطة من النهاية وتنظيف النص
+        const value = row[0].replace(/\.$/, '').trim();
+        if (value) {
+          result.push(value);
+        }
+      }
+    }
+    stmt.free();
+  } catch (err) {
+    console.error('getUniqueValues error:', err);
+  }
+
+  return result;
+}
+
+/**
+ * جلب عدد الشهادات الإجمالي (للـ Pagination)
+ */
+function getCertificatesCount(options = {}) {
+  let query = 'SELECT COUNT(*) as count FROM certificates';
+  const conditions = [];
+  const params = [];
+
+  if (options.status) {
+    conditions.push('status = ?');
+    params.push(options.status);
+  }
+
+  if (options.modifiedOnly) {
+    conditions.push('is_modified = 1');
+  }
+
+  if (options.searchName) {
+    conditions.push('name LIKE ?');
+    params.push(`%${options.searchName}%`);
+  }
+
+  if (conditions.length > 0) {
+    query += ' WHERE ' + conditions.join(' AND ');
+  }
+
+  try {
+    const stmt = db.prepare(query);
+    if (params.length > 0) {
+      stmt.bind(params);
+    }
+    if (stmt.step()) {
+      const result = stmt.get()[0];
+      stmt.free();
+      return result;
+    }
+    stmt.free();
+  } catch (err) {
+    console.error('getCertificatesCount error:', err);
+  }
+
+  return 0;
 }
 
 /**
@@ -1128,7 +1285,10 @@ module.exports = {
   getNonPaymentRecord,
   getNonPaymentByCertificate,
   cancelNonPayment,
-  normalizeValue
+  normalizeValue,
+  // ⭐ دوال جديدة للأداء
+  getUniqueValues,
+  getCertificatesCount
 };
 
 

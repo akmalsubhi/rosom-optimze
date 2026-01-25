@@ -307,6 +307,25 @@ ipcMain.handle('db-get-stats', async (event, options = {}) => {
     }
 });
 
+// ⭐ دوال جديدة للأداء
+ipcMain.handle('db-get-unique-values', async (event, { column, options }) => {
+    try {
+        return db.getUniqueValues(column, options);
+    } catch (err) {
+        console.error('db-get-unique-values error', err);
+        throw err;
+    }
+});
+
+ipcMain.handle('db-get-certificates-count', async (event, options) => {
+    try {
+        return db.getCertificatesCount(options);
+    } catch (err) {
+        console.error('db-get-certificates-count error', err);
+        throw err;
+    }
+});
+
 // الطباعة
 ipcMain.handle('print-page', async () => {
     try {

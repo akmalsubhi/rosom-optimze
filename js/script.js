@@ -3289,26 +3289,18 @@ const AutocompleteSystem = {
     try {
       if (!API.ready) return;
 
-      const certs = await API.certificates.getAll({ status: "active" });
-
-      const sets = {
-        activities: new Set(),
-        names: new Set(),
-        locations: new Set(),
-      };
-
-      certs.forEach((cert) => {
-        if (cert.activity)
-          sets.activities.add(cert.activity.replace(/\.$/, "").trim());
-        if (cert.name) sets.names.add(cert.name.replace(/\.$/, "").trim());
-        if (cert.location)
-          sets.locations.add(cert.location.replace(/\.$/, "").trim());
-      });
+      // ⭐ استخدام getUniqueValues مباشرة من SQL - أسرع بكثير!
+      // بدلاً من تحميل كل الشهادات ثم استخراج القيم الفريدة
+      const [activities, names, locations] = await Promise.all([
+        API.certificates.getUniqueValues('activity', { status: 'active' }),
+        API.certificates.getUniqueValues('name', { status: 'active' }),
+        API.certificates.getUniqueValues('location', { status: 'active' })
+      ]);
 
       this.cache = {
-        activities: Array.from(sets.activities).sort(),
-        names: Array.from(sets.names).sort(),
-        locations: Array.from(sets.locations).sort(),
+        activities: activities || [],
+        names: names || [],
+        locations: locations || [],
         lastUpdate: Date.now(),
       };
 

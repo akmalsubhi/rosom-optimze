@@ -11,7 +11,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
         getHistory: (id) => ipcRenderer.invoke('db-get-certificate-history', id),
         delete: (id, deletedBy) => ipcRenderer.invoke('db-delete-certificate', { id, deletedBy }),
         search: (term) => ipcRenderer.invoke('db-search-certificates', term),
-        getStats: (options) => ipcRenderer.invoke('db-get-stats', options)
+        getStats: (options) => ipcRenderer.invoke('db-get-stats', options),
+        // ⭐ دوال جديدة للأداء
+        getUniqueValues: (column, options) => ipcRenderer.invoke('db-get-unique-values', { column, options }),
+        getCount: (options) => ipcRenderer.invoke('db-get-certificates-count', options)
     },
 
     // Print
