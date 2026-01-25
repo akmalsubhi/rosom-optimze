@@ -3174,6 +3174,98 @@ function addHistoryStyles() {
   document.head.appendChild(style);
 }
 
+// ========== نظام الفهرسة المتقدمة (Trie) ==========
+// يعمل في الذاكرة فقط - لا يمس قاعدة البيانات
+class TrieNode {
+  constructor() {
+    this.children = new Map();
+    this.items = new Set(); // العناصر الكاملة التي تحتوي هذا الـ prefix
+    this.isEndOfWord = false;
+  }
+}
+
+class TrieIndex {
+  constructor() {
+    this.root = new TrieNode();
+    this.allItems = [];
+  }
+
+  // تطبيع النص للبحث
+  normalize(text) {
+    return NumberConverter.normalize(text || "").toLowerCase();
+  }
+
+  // إضافة عنصر للفهرس
+  insert(originalItem) {
+    if (!originalItem) return;
+
+    const normalized = this.normalize(originalItem);
+    this.allItems.push(originalItem);
+
+    // فهرسة كل الـ substrings للبحث في أي مكان
+    for (let startPos = 0; startPos < normalized.length; startPos++) {
+      let node = this.root;
+
+      for (let i = startPos; i < normalized.length; i++) {
+        const char = normalized[i];
+
+        if (!node.children.has(char)) {
+          node.children.set(char, new TrieNode());
+        }
+
+        node = node.children.get(char);
+        node.items.add(originalItem);
+      }
+
+      node.isEndOfWord = true;
+    }
+  }
+
+  // البحث السريع
+  search(query, maxResults = 8) {
+    if (!query) return [];
+
+    const normalized = this.normalize(query);
+    let node = this.root;
+
+    // التنقل في الـ Trie
+    for (const char of normalized) {
+      if (!node.children.has(char)) {
+        return []; // لا توجد نتائج
+      }
+      node = node.children.get(char);
+    }
+
+    // الحصول على النتائج
+    const results = Array.from(node.items);
+
+    // ترتيب: الأقصر والذي يبدأ بالنص أولاً
+    results.sort((a, b) => {
+      const aNorm = this.normalize(a);
+      const bNorm = this.normalize(b);
+      const aStarts = aNorm.startsWith(normalized);
+      const bStarts = bNorm.startsWith(normalized);
+
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      return a.length - b.length;
+    });
+
+    return results.slice(0, maxResults);
+  }
+
+  // مسح الفهرس
+  clear() {
+    this.root = new TrieNode();
+    this.allItems = [];
+  }
+
+  // عدد العناصر المفهرسة
+  get size() {
+    return this.allItems.length;
+  }
+}
+
 // ========== نظام الاقتراحات ==========
 const AutocompleteSystem = {
   cache: {
@@ -3181,6 +3273,13 @@ const AutocompleteSystem = {
     names: [],
     locations: [],
     lastUpdate: null,
+  },
+
+  // فهارس Trie للبحث السريع
+  indexes: {
+    activities: new TrieIndex(),
+    names: new TrieIndex(),
+    locations: new TrieIndex(),
   },
 
   // منع إعادة ظهور الاقتراحات بعد الاختيار
@@ -3213,27 +3312,49 @@ const AutocompleteSystem = {
         lastUpdate: Date.now(),
       };
 
+      // بناء فهارس Trie للبحث السريع
+      this.buildIndexes();
+
       // تحديث الـ cache العام
       AppState.cache.suggestions = this.cache;
+
+      console.log(`✅ تم بناء فهارس البحث: ${this.indexes.activities.size} نشاط، ${this.indexes.names.size} اسم، ${this.indexes.locations.size} عنوان`);
     } catch (err) {
       console.error("Error loading suggestions cache:", err);
     }
   },
 
+  // بناء فهارس Trie من الـ cache
+  buildIndexes() {
+    // مسح الفهارس القديمة
+    this.indexes.activities.clear();
+    this.indexes.names.clear();
+    this.indexes.locations.clear();
+
+    // بناء فهارس جديدة
+    this.cache.activities.forEach(item => this.indexes.activities.insert(item));
+    this.cache.names.forEach(item => this.indexes.names.insert(item));
+    this.cache.locations.forEach(item => this.indexes.locations.insert(item));
+  },
+
   search(query, type) {
     if (!query || query.length < CONFIG.MIN_SEARCH_LENGTH) return [];
 
+    // استخدام فهرس Trie للبحث السريع
+    const index = this.indexes[type];
+    if (index && index.size > 0) {
+      return index.search(query, CONFIG.MAX_SUGGESTIONS);
+    }
+
+    // fallback للبحث العادي لو الفهرس فاضي
     const list = this.cache[type] || [];
     const normalizedQuery = NumberConverter.normalize(query);
-
-    // تحسين الأداء: فصل النتائج التي تبدأ بالنص والنتائج التي تحتويه فقط
-    const startsWithMatches = [];
-    const containsMatches = [];
     const maxResults = CONFIG.MAX_SUGGESTIONS;
 
-    // البحث مع خروج مبكر عند الوصول للحد الأقصى
+    const startsWithMatches = [];
+    const containsMatches = [];
+
     for (let i = 0; i < list.length; i++) {
-      // خروج مبكر إذا لدينا ما يكفي من النتائج
       if (startsWithMatches.length >= maxResults) break;
 
       const item = list[i];
@@ -3242,19 +3363,14 @@ const AutocompleteSystem = {
       if (normalizedItem.startsWith(normalizedQuery)) {
         startsWithMatches.push(item);
       } else if (normalizedItem.includes(normalizedQuery)) {
-        // نضيف فقط إذا لم نصل للحد الأقصى
         if (startsWithMatches.length + containsMatches.length < maxResults) {
           containsMatches.push(item);
         }
       }
     }
 
-    // دمج النتائج: الأولوية للنصوص التي تبدأ بالبحث
     const results = [...startsWithMatches, ...containsMatches];
-
-    // الترتيب حسب الطول (الأقصر أفضل) - فقط على النتائج المحدودة
     results.sort((a, b) => a.length - b.length);
-
     return results.slice(0, maxResults);
   },
 
