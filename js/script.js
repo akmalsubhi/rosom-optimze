@@ -4643,31 +4643,92 @@ function closeAllModals() {
   });
 }
 
-// ========== قائمة الشهادات ==========
+// ========== قائمة الشهادات مع Pagination ==========
+const CertificatesListState = {
+  currentPage: 0,
+  pageSize: 50,           // عدد الشهادات في كل صفحة
+  totalCount: 0,
+  loadedCerts: [],
+  isLoading: false,
+  hasMore: true,
+  searchMode: false,
+  lastSearchTerm: ''
+};
+
 async function openCertificatesModal() {
   const modal = Utils.getElement("certsModal", false);
   if (modal) modal.classList.add("active");
-  document.body.classList.add("modal-open"); // منع scroll الشاشة أثناء فتح الـ modal
+  document.body.classList.add("modal-open");
+
+  // إعادة تعيين الحالة عند فتح النافذة
+  CertificatesListState.currentPage = 0;
+  CertificatesListState.loadedCerts = [];
+  CertificatesListState.hasMore = true;
+  CertificatesListState.searchMode = false;
+  CertificatesListState.lastSearchTerm = '';
+
   await showCertificatesList();
 }
 
 function closeCertsModal() {
   const modal = Utils.getElement("certsModal", false);
   if (modal) modal.classList.remove("active");
-  document.body.classList.remove("modal-open"); // إعادة scroll الشاشة
+  document.body.classList.remove("modal-open");
 }
 
-async function showCertificatesList() {
+async function showCertificatesList(append = false) {
+  if (CertificatesListState.isLoading) return;
+
+  const container = Utils.getElement("certsListContainer", false);
+  if (!container) return;
+
+  // عرض مؤشر التحميل
+  if (!append) {
+    container.innerHTML = '<div class="loading-spinner">⏳ جاري تحميل الشهادات...</div>';
+  }
+
+  CertificatesListState.isLoading = true;
+
   try {
-    const certs = await API.certificates.getAll({ status: "active" });
-    renderCertificatesList(certs);
+    // جلب العدد الإجمالي أولاً (مرة واحدة فقط)
+    if (!append) {
+      CertificatesListState.totalCount = await API.certificates.getCount({ status: "active" });
+    }
+
+    // جلب صفحة واحدة فقط من الشهادات
+    const certs = await API.certificates.getAll({
+      status: "active",
+      limit: CertificatesListState.pageSize,
+      offset: CertificatesListState.currentPage * CertificatesListState.pageSize
+    });
+
+    // تحديث الحالة
+    if (append) {
+      CertificatesListState.loadedCerts = [...CertificatesListState.loadedCerts, ...certs];
+    } else {
+      CertificatesListState.loadedCerts = certs;
+    }
+
+    CertificatesListState.hasMore = certs.length === CertificatesListState.pageSize;
+
+    renderCertificatesList(CertificatesListState.loadedCerts, !append);
+
   } catch (err) {
     console.error("Error loading certificates:", err);
     showNotification("❌ حدث خطأ أثناء تحميل الشهادات", "error");
+  } finally {
+    CertificatesListState.isLoading = false;
   }
 }
 
-function renderCertificatesList(certs) {
+async function loadMoreCertificates() {
+  if (!CertificatesListState.hasMore || CertificatesListState.isLoading) return;
+
+  CertificatesListState.currentPage++;
+  await showCertificatesList(true);
+}
+
+function renderCertificatesList(certs, resetScroll = true) {
   const container = Utils.getElement("certsListContainer", false);
   if (!container) return;
 
@@ -4676,7 +4737,16 @@ function renderCertificatesList(certs) {
     return;
   }
 
-  let html = '<div class="certs-list">';
+  // عرض إحصائيات التحميل
+  const loadedCount = certs.length;
+  const totalCount = CertificatesListState.totalCount;
+  const statsHtml = `
+    <div class="certs-stats">
+      <span>📊 عرض ${toArabicNumber(loadedCount)} من ${toArabicNumber(totalCount)} شهادة</span>
+    </div>
+  `;
+
+  let html = statsHtml + '<div class="certs-list">';
 
   certs.forEach((cert) => {
     const modifiedClass = cert.is_modified ? "modified" : "original";
@@ -4685,8 +4755,7 @@ function renderCertificatesList(certs) {
       : '<span class="badge original">✅ أصلية</span>';
 
     html += `
-      <div class="cert-item ${modifiedClass}" onclick="loadAndClose(${cert.id
-      })">
+      <div class="cert-item ${modifiedClass}" onclick="loadAndClose(${cert.id})">
         <div class="cert-header">
           <span class="cert-id">#${cert.id}</span>
           ${modifiedBadge}
@@ -4695,24 +4764,40 @@ function renderCertificatesList(certs) {
         <div class="cert-activity">${cert.activity || "-"}</div>
         <div class="cert-footer">
           <span class="cert-date">${formatDate(cert.created_at)}</span>
-          <span class="cert-total">${toArabicNumber(
-        cert.grand_total || 0
-      )} ج</span>
+          <span class="cert-total">${toArabicNumber(cert.grand_total || 0)} ج</span>
         </div>
         <div class="cert-actions">
-  <button onclick="event.stopPropagation(); showHistory(${cert.id})" class="btn-sm">📜 السجل</button>
-  <button onclick="event.stopPropagation(); openNonPaymentModal(${cert.id})" class="btn-sm warning" title="تحويل لعدم دفع رسوم">
-    ${cert.has_non_payment ? '📋 عدم دفع ✓' : '⚠️ عدم دفع'}
-  </button>
-  <button onclick="event.stopPropagation(); confirmDelete(${cert.id})" class="btn-sm danger">🗑️</button>
-</div>
-</div>
-      
+          <button onclick="event.stopPropagation(); showHistory(${cert.id})" class="btn-sm">📜 السجل</button>
+          <button onclick="event.stopPropagation(); openNonPaymentModal(${cert.id})" class="btn-sm warning" title="تحويل لعدم دفع رسوم">
+            ${cert.has_non_payment ? '📋 عدم دفع ✓' : '⚠️ عدم دفع'}
+          </button>
+          <button onclick="event.stopPropagation(); confirmDelete(${cert.id})" class="btn-sm danger">🗑️</button>
+        </div>
+      </div>
     `;
   });
 
   html += "</div>";
+
+  // زر تحميل المزيد
+  if (CertificatesListState.hasMore) {
+    const remaining = totalCount - loadedCount;
+    html += `
+      <div class="load-more-container">
+        <button onclick="loadMoreCertificates()" class="btn-load-more" id="loadMoreBtn">
+          📥 تحميل المزيد (${toArabicNumber(Math.min(remaining, CertificatesListState.pageSize))} شهادة)
+        </button>
+        <span class="remaining-count">متبقي ${toArabicNumber(remaining)} شهادة</span>
+      </div>
+    `;
+  }
+
   container.innerHTML = html;
+
+  // إعادة التمرير لأعلى عند التحميل الأول
+  if (resetScroll) {
+    container.scrollTop = 0;
+  }
 
   // تحديث آخر نتائج البحث
   AppState.cache.lastSearchResults = certs;
