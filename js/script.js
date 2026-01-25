@@ -4839,7 +4839,21 @@ async function searchCertificatesUI() {
     if (searchTerm) {
       certs = await API.certificates.search(searchTerm);
     } else {
-      certs = await API.certificates.getAll({ status: "active" });
+      // ⭐ FIX: If search is cleared, don't fetch everything!
+      // Revert to paginated list
+      loader.hide();
+
+      CertificatesListState.currentPage = 0;
+      CertificatesListState.loadedCerts = [];
+      CertificatesListState.hasMore = true;
+      CertificatesListState.searchMode = false;
+
+      // Hide summary
+      const summary = Utils.getElement("searchSummary", false);
+      if (summary) summary.style.display = "none";
+
+      await showCertificatesList();
+      return;
     }
 
     lastSearchResults = certs;
