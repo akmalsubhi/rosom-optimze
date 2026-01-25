@@ -3183,6 +3183,9 @@ const AutocompleteSystem = {
     lastUpdate: null,
   },
 
+  // منع إعادة ظهور الاقتراحات بعد الاختيار
+  isSelecting: false,
+
   async loadCache() {
     try {
       if (!API.ready) return;
@@ -3223,25 +3226,36 @@ const AutocompleteSystem = {
     const list = this.cache[type] || [];
     const normalizedQuery = NumberConverter.normalize(query);
 
-    const matches = list.filter((item) => {
+    // تحسين الأداء: فصل النتائج التي تبدأ بالنص والنتائج التي تحتويه فقط
+    const startsWithMatches = [];
+    const containsMatches = [];
+    const maxResults = CONFIG.MAX_SUGGESTIONS;
+
+    // البحث مع خروج مبكر عند الوصول للحد الأقصى
+    for (let i = 0; i < list.length; i++) {
+      // خروج مبكر إذا لدينا ما يكفي من النتائج
+      if (startsWithMatches.length >= maxResults) break;
+
+      const item = list[i];
       const normalizedItem = NumberConverter.normalize(item);
-      return normalizedItem.includes(normalizedQuery);
-    });
 
-    matches.sort((a, b) => {
-      const aLower = NumberConverter.normalize(a);
-      const bLower = NumberConverter.normalize(b);
+      if (normalizedItem.startsWith(normalizedQuery)) {
+        startsWithMatches.push(item);
+      } else if (normalizedItem.includes(normalizedQuery)) {
+        // نضيف فقط إذا لم نصل للحد الأقصى
+        if (startsWithMatches.length + containsMatches.length < maxResults) {
+          containsMatches.push(item);
+        }
+      }
+    }
 
-      const aStarts = aLower.startsWith(normalizedQuery);
-      const bStarts = bLower.startsWith(normalizedQuery);
+    // دمج النتائج: الأولوية للنصوص التي تبدأ بالبحث
+    const results = [...startsWithMatches, ...containsMatches];
 
-      if (aStarts && !bStarts) return -1;
-      if (!aStarts && bStarts) return 1;
+    // الترتيب حسب الطول (الأقصر أفضل) - فقط على النتائج المحدودة
+    results.sort((a, b) => a.length - b.length);
 
-      return a.length - b.length;
-    });
-
-    return matches.slice(0, CONFIG.MAX_SUGGESTIONS);
+    return results.slice(0, maxResults);
   },
 
   setup(inputId, type) {
@@ -3269,6 +3283,11 @@ const AutocompleteSystem = {
 
     // Input handler
     const inputHandler = () => {
+      // تجاهل الـ input event بعد اختيار اقتراح
+      if (AutocompleteSystem.isSelecting) {
+        return;
+      }
+
       selectedIndex = -1;
       const query = input.value.trim();
 
@@ -3282,6 +3301,11 @@ const AutocompleteSystem = {
 
     // Focus handler
     const focusHandler = () => {
+      // تجاهل الـ focus بعد اختيار اقتراح
+      if (AutocompleteSystem.isSelecting) {
+        return;
+      }
+
       const query = input.value.trim();
       if (query.length >= CONFIG.MIN_SEARCH_LENGTH) {
         const suggestions = this.search(query, type);
@@ -3422,10 +3446,21 @@ const AutocompleteSystem = {
   selectSuggestion(inputId, value) {
     const input = Utils.getElement(inputId, false);
     if (input) {
-      input.value = value;
-      input.dispatchEvent(new Event("input"));
+      // تفعيل الـ flag لمنع إعادة ظهور الاقتراحات
+      this.isSelecting = true;
+
+      // إخفاء الاقتراحات أولاً
       this.hideSuggestions(inputId);
+
+      // تعيين القيمة وإرسال الـ event
+      input.value = value;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
       input.focus();
+
+      // إعادة تعيين الـ flag بعد فترة قصيرة
+      setTimeout(() => {
+        this.isSelecting = false;
+      }, 100);
     }
   },
 
