@@ -6693,20 +6693,22 @@ function addAutocompleteStyles() {
       top: 100%;
       left: 0;
       right: 0;
-      background: white;
-      border: 2px solid #667eea;
+      background: #1a1a25; /* Dark background */
+      border: 1px solid #d4af37; /* Gold border */
       border-top: none;
-      border-radius: 0 0 10px 10px;
+      border-radius: 0 0 16px 16px;
       max-height: 250px;
       overflow-y: auto;
-      z-index: 1000;
-      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+      z-index: 99999;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
       display: none;
+      scrollbar-width: thin;
+      scrollbar-color: #d4af37 #1a1a25;
     }
     
     .suggestions-dropdown.active {
       display: block;
-      animation: slideDown 0.2s ease;
+      animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
     @keyframes slideDown {
@@ -6721,12 +6723,14 @@ function addAutocompleteStyles() {
     }
     
     .suggestion-item {
-      padding: 12px 15px;
+      padding: 12px 20px;
       cursor: pointer;
-      border-bottom: 1px solid #eee;
-      transition: all 0.15s ease;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      transition: all 0.2s ease;
       direction: rtl;
       text-align: right;
+      color: #e2e8f0;
+      font-size: 0.9rem;
     }
     
     .suggestion-item:last-child {
@@ -6735,41 +6739,43 @@ function addAutocompleteStyles() {
     
     .suggestion-item:hover,
     .suggestion-item.selected {
-      background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+      background: linear-gradient(90deg, rgba(212, 175, 55, 0.15), transparent);
+      padding-right: 25px;
+      color: #d4af37;
     }
     
     .suggestion-item.selected {
-      background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
-      border-right: 3px solid #667eea;
+      border-right: 3px solid #d4af37;
     }
     
     .suggestion-item mark {
-      background: #fef08a;
-      color: inherit;
-      padding: 0 2px;
-      border-radius: 3px;
+      background: transparent;
+      color: #d4af37;
+      font-weight: bold;
+      padding: 0;
+      text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
     }
     
     .input-with-suggestions {
       position: relative;
     }
     
+    /* Scrollbar styling for suggestions */
     .suggestions-dropdown::-webkit-scrollbar {
       width: 6px;
     }
     
     .suggestions-dropdown::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 3px;
+      background: #1a1a25;
     }
     
     .suggestions-dropdown::-webkit-scrollbar-thumb {
-      background: #667eea;
+      background: #d4af37;
       border-radius: 3px;
     }
     
     .suggestions-dropdown::-webkit-scrollbar-thumb:hover {
-      background: #764ba2;
+      background: #f4d03f;
     }
     
     /* Number Toggle Button */

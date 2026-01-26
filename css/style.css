@@ -2665,189 +2665,349 @@ html {
 }
 
 /* =========================================
-   Redesign Mode: Creative & Chic Popup
+   🌟 DARK LUXURY POPUP THEME 🌟
+   Premium Dark Glass Design with Golden Accents
    ========================================= */
 
 .redesign-mode {
-  --primary-chic: #4f46e5;
-  --secondary-chic: #7c3aed;
-  --accent-chic: #06b6d4;
-  --bg-glass: rgba(255, 255, 255, 0.7);
-  --border-glass: rgba(255, 255, 255, 0.8);
-  --text-main: #1e293b;
-  --text-muted: #64748b;
+  /* 🎨 Dark Luxury Color Palette */
+  --dark-bg-primary: #0a0a0f;
+  --dark-bg-secondary: #12121a;
+  --dark-bg-tertiary: #1a1a25;
+  --dark-surface: rgba(30, 30, 45, 0.85);
+  --dark-surface-hover: rgba(40, 40, 60, 0.9);
+
+  /* ✨ Golden Accents */
+  --gold-primary: #d4af37;
+  --gold-light: #f4d03f;
+  --gold-dark: #b8860b;
+  --gold-glow: rgba(212, 175, 55, 0.4);
+
+  /* 💜 Royal Purple */
+  --royal-purple: #6b21a8;
+  --royal-purple-light: #9333ea;
+  --royal-purple-glow: rgba(147, 51, 234, 0.3);
+
+  /* 💎 Diamond Blue */
+  --diamond-blue: #0ea5e9;
+  --diamond-blue-glow: rgba(14, 165, 233, 0.3);
+
+  /* 📝 Text Colors */
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.85);
+  --text-muted: rgba(255, 255, 255, 0.6);
+  --text-gold: #d4af37;
+
+  /* 🔲 Borders & Glass */
+  --border-glass: rgba(212, 175, 55, 0.2);
+  --border-glow: rgba(212, 175, 55, 0.4);
 
   position: relative;
-  background: var(--bg-glass) !important;
-  backdrop-filter: blur(25px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
+  background: linear-gradient(145deg,
+      var(--dark-bg-primary) 0%,
+      var(--dark-bg-secondary) 50%,
+      var(--dark-bg-tertiary) 100%) !important;
+  backdrop-filter: blur(40px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(200%) !important;
   border: 1px solid var(--border-glass) !important;
-  border-radius: 40px !important;
+  border-radius: 32px !important;
   box-shadow:
-    0 40px 100px -20px rgba(0, 0, 0, 0.2),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.5) !important;
+    0 0 0 1px rgba(212, 175, 55, 0.1),
+    0 25px 80px -15px rgba(0, 0, 0, 0.8),
+    0 0 60px -20px var(--gold-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  /* overflow: hidden; */
 }
 
-/* --- Decorative Blobs --- */
-.blob {
+
+/* --- ✨ Animated Background Particles --- */
+.redesign-mode::before {
+  content: '';
   position: absolute;
-  width: 300px;
-  height: 300px;
-  background: linear-gradient(135deg, var(--primary-chic), var(--secondary-chic));
-  filter: blur(80px);
-  border-radius: 50%;
-  z-index: -1;
-  opacity: 0.15;
-  animation: blobFloat 10s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0.95);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, var(--royal-purple-glow) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, var(--gold-glow) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, var(--diamond-blue-glow) 0%, transparent 60%);
+  opacity: 0.3;
+  z-index: 0;
+  animation: ambientGlow 8s ease-in-out infinite alternate;
 }
 
-.blob-1 {
-  top: -100px;
-  right: -100px;
-}
-
-.blob-2 {
-  bottom: -100px;
-  left: -100px;
-  animation-delay: -5s;
-}
-
-@keyframes blobFloat {
+@keyframes ambientGlow {
   0% {
-    transform: translate(0, 0) scale(1);
+    opacity: 0.2;
+    transform: scale(1);
   }
 
   100% {
-    transform: translate(50px, 30px) scale(1.1);
+    opacity: 0.4;
+    transform: scale(1.05);
   }
 }
 
-/* --- Header Redesign --- */
+/* --- 🔮 Decorative Luxury Blobs --- */
+.blob {
+  position: absolute;
+  width: 350px;
+  height: 350px;
+  background: linear-gradient(135deg, var(--gold-primary), var(--royal-purple));
+  filter: blur(100px);
+  border-radius: 50%;
+  z-index: 0;
+  opacity: 0.12;
+  animation: luxuryBlobFloat 12s infinite alternate cubic-bezier(0.45, 0.05, 0.55, 0.95);
+}
+
+.blob-1 {
+  top: -120px;
+  right: -80px;
+  background: linear-gradient(135deg, var(--gold-primary), var(--gold-light));
+}
+
+.blob-2 {
+  bottom: -120px;
+  left: -80px;
+  background: linear-gradient(135deg, var(--royal-purple), var(--diamond-blue));
+  animation-delay: -6s;
+}
+
+@keyframes luxuryBlobFloat {
+  0% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+
+  50% {
+    transform: translate(30px, 20px) scale(1.1) rotate(5deg);
+  }
+
+  100% {
+    transform: translate(60px, 40px) scale(1.05) rotate(-3deg);
+  }
+}
+
+/* --- 👑 Header - Royal Dark Design --- */
 .popup-header-chic {
-  padding: 30px 40px;
+  position: relative;
+  z-index: 1;
+  padding: 28px 35px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.03) 0%,
+      transparent 100%);
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.popup-header-chic::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg,
+      transparent,
+      var(--gold-primary),
+      transparent);
+  opacity: 0.5;
 }
 
 .header-main-info {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 18px;
 }
 
 .header-icon-glow {
-  font-size: 2.2rem;
-  background: white;
-  width: 60px;
-  height: 60px;
+  font-size: 2rem;
+  background: linear-gradient(135deg, var(--dark-surface), var(--dark-bg-tertiary));
+  width: 58px;
+  height: 58px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 18px;
-  box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.2);
+  border-radius: 16px;
+  border: 1px solid var(--border-glass);
+  box-shadow:
+    0 8px 25px -5px rgba(0, 0, 0, 0.5),
+    0 0 20px -5px var(--gold-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  animation: iconPulse 3s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.5), 0 0 20px -5px var(--gold-glow);
+  }
+
+  50% {
+    box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.5), 0 0 35px -5px var(--gold-glow);
+  }
 }
 
 .header-text-stack h3 {
   margin: 0;
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   font-weight: 800;
-  color: var(--text-main);
-  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--text-primary), var(--gold-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.3px;
+  text-shadow: 0 0 30px var(--gold-glow);
 }
 
 .header-text-stack p {
-  margin: 4px 0 0;
-  font-size: 0.9rem;
+  margin: 5px 0 0;
+  font-size: 0.88rem;
   color: var(--text-muted);
+  letter-spacing: 0.5px;
 }
 
 .close-btn-glass {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  background: white;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--dark-surface);
   color: var(--text-muted);
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .close-btn-glass:hover {
-  background: #fee2e2;
-  color: #ef4444;
-  transform: rotate(90deg);
-  border-color: #fca5a5;
+  background: linear-gradient(135deg, #7f1d1d, #991b1b);
+  color: #fecaca;
+  border-color: #dc2626;
+  transform: rotate(90deg) scale(1.1);
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.4);
 }
 
-/* ========== Content Area ========== */
-/* --- Content Grid --- */
+/* ========== 📋 Content Area - Dark Glass ========== */
 .popup-content-grid {
+  position: relative;
+  z-index: 1;
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 30px;
-  padding: 10px 40px 40px;
-  max-height: 65vh;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 25px;
+  padding: 25px 35px 35px;
+  max-height: 85vh;
   overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* 🎨 Custom Dark Scrollbar */
+.popup-content-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.popup-content-grid::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+}
+
+.popup-content-grid::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--gold-primary), var(--gold-dark));
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.popup-content-grid::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--gold-light), var(--gold-primary));
+  background-clip: padding-box;
 }
 
 .content-col {
   display: flex;
   flex-direction: column;
-  gap: 25px;
+  gap: 22px;
 }
 
+/* --- 🔲 Glass Section Cards --- */
 .glass-section {
-  background: rgba(255, 255, 255, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 30px;
-  padding: 30px;
+  background: var(--dark-surface);
+  border: 1px solid var(--border-glass);
+  border-radius: 24px;
+  padding: 28px;
   position: relative;
-  transition: all 0.4s ease;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  /* overflow: hidden; */
+}
+
+
+.glass-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
 }
 
 .glass-section:hover {
-  background: rgba(255, 255, 255, 0.55);
-  transform: translateY(-5px);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05);
+  background: var(--dark-surface-hover);
+  transform: translateY(-4px);
+  border-color: var(--border-glow);
+  box-shadow:
+    0 20px 50px -15px rgba(0, 0, 0, 0.5),
+    0 0 30px -10px var(--gold-glow);
 }
 
+/* --- 🏷️ Section Tags --- */
 .section-tag {
   position: absolute;
-  top: -12px;
-  right: 25px;
-  background: var(--primary-chic);
-  color: white;
-  padding: 4px 15px;
+  top: -13px;
+  right: 22px;
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold-primary));
+  color: var(--dark-bg-primary);
+  padding: 6px 16px;
   border-radius: 20px;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 800;
-  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow:
+    0 4px 15px rgba(212, 175, 55, 0.4),
+    0 0 20px rgba(212, 175, 55, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* --- Luxury Floating Inputs --- */
+/* --- ✏️ Luxury Dark Inputs --- */
 .luxury-input-group {
   position: relative;
-  margin-top: 15px;
+  margin-top: 18px;
 }
 
 .luxury-input-group input,
 .luxury-input-group textarea {
   width: 100%;
-  padding: 22px 20px 10px;
-  background: white;
-  border: 2px solid #f1f5f9;
-  border-radius: 20px;
+  padding: 26px 20px 10px;
+  background: linear-gradient(145deg, rgba(20, 20, 30, 0.9), rgba(25, 25, 40, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text-main);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--text-primary);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   box-sizing: border-box;
+}
+
+.luxury-input-group input::placeholder,
+.luxury-input-group textarea::placeholder {
+  color: transparent;
 }
 
 .luxury-input-group label {
@@ -2855,32 +3015,35 @@ html {
   top: 18px;
   right: 20px;
   color: var(--text-muted);
-  font-size: 1rem;
+  font-size: 0.95rem;
   pointer-events: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .luxury-input-group input:focus,
 .luxury-input-group input:not(:placeholder-shown),
 .luxury-input-group textarea:focus,
 .luxury-input-group textarea:not(:placeholder-shown) {
-  border-color: var(--primary-chic);
-  background: white;
+  border-color: var(--gold-primary);
+  background: linear-gradient(145deg, rgba(25, 25, 38, 0.95), rgba(30, 30, 48, 0.95));
   outline: none;
-  box-shadow: 0 8px 15px -5px rgba(79, 70, 229, 0.1);
+  box-shadow:
+    0 0 0 3px rgba(212, 175, 55, 0.15),
+    0 8px 30px -5px rgba(0, 0, 0, 0.4),
+    0 0 20px -5px var(--gold-glow);
 }
 
 .luxury-input-group input:focus+label,
 .luxury-input-group input:not(:placeholder-shown)+label,
 .luxury-input-group textarea:focus+label,
 .luxury-input-group textarea:not(:placeholder-shown)+label {
-  top: 8px;
+  top: 5px;
   right: 20px;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 800;
-  color: var(--primary-chic);
+  color: var(--gold-primary);
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
 }
 
 .luxury-input-group.small input {
@@ -2890,20 +3053,116 @@ html {
 
 .luxury-input-group.small label {
   top: 14px;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 .luxury-input-group.small input:focus+label,
 .luxury-input-group.small input:not(:placeholder-shown)+label {
-  top: 6px;
-  font-size: 0.65rem;
+  top: 5px;
+  font-size: 0.6rem;
 }
 
-/* --- Grid Utilities --- */
+/* --- ✨ Input Glow Effect --- */
+.input-glow {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold-primary), var(--royal-purple-light), var(--gold-primary));
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.luxury-input-group input:focus~.input-glow,
+.luxury-input-group textarea:focus~.input-glow {
+  width: 90%;
+  box-shadow: 0 0 15px var(--gold-glow);
+}
+
+/* --- 💾 Saved Indicator Dark --- */
+.saved-indicator-chic {
+  position: absolute;
+  top: -10px;
+  left: 15px;
+  padding: 5px 14px;
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 20px;
+  opacity: 0;
+  transform: translateY(8px) scale(0.9);
+  transition: all 0.4s ease;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+.saved-indicator-chic.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* --- 📊 Calc Preview Cards --- */
+.preview-stack {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.calc-chip {
+  flex: 1;
+  padding: 12px 15px;
+  background: linear-gradient(145deg, rgba(20, 20, 30, 0.8), rgba(30, 30, 45, 0.8));
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 14px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.calc-chip:hover {
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);
+}
+
+.calc-chip.info {
+  background: linear-gradient(145deg, rgba(107, 33, 168, 0.3), rgba(147, 51, 234, 0.2));
+  border-color: rgba(147, 51, 234, 0.3);
+}
+
+/* --- 💰 Grand Total Display --- */
+.grand-total-chic {
+  margin-top: 18px;
+  padding: 18px 22px;
+  background: linear-gradient(145deg, rgba(212, 175, 55, 0.15), rgba(184, 134, 11, 0.1));
+  border: 1px solid var(--gold-primary);
+  border-radius: 18px;
+  text-align: center;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--gold-light);
+  box-shadow:
+    0 0 25px rgba(212, 175, 55, 0.15),
+    inset 0 0 20px rgba(212, 175, 55, 0.05);
+  text-shadow: 0 0 20px var(--gold-glow);
+}
+
+/* --- 💡 Auto Hint --- */
+.auto-hint {
+  margin-top: 8px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+  padding-right: 5px;
+}
+
+/* --- 📐 Grid Utilities --- */
 .grid-2-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 15px;
+  gap: 12px;
 }
 
 .grid-3-cols {
@@ -2911,6 +3170,222 @@ html {
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
+
+/* --- 🔘 Textarea Special Styling --- */
+.luxury-input-group.textarea-group textarea {
+  min-height: 90px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+/* =========================================
+   🎯 DARK LUXURY ACTION BUTTONS
+   ========================================= */
+.popup-actions-chic {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  padding: 25px 35px;
+  background: linear-gradient(180deg,
+      rgba(15, 15, 25, 0.95) 0%,
+      rgba(10, 10, 15, 1) 100%);
+  border-top: 1px solid rgba(212, 175, 55, 0.15);
+}
+
+.popup-actions-chic::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(212, 175, 55, 0.4),
+      transparent);
+}
+
+/* --- Primary Button - Golden Gradient --- */
+.btn-chic-primary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #b8860b 0%, #d4af37 50%, #f4d03f 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0a0a0f;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 6px 25px rgba(212, 175, 55, 0.4),
+    0 0 30px rgba(212, 175, 55, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-chic-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.3),
+      transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-chic-primary:hover::before {
+  left: 100%;
+}
+
+.btn-chic-primary:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow:
+    0 12px 35px rgba(212, 175, 55, 0.5),
+    0 0 50px rgba(212, 175, 55, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  background: linear-gradient(135deg, #d4af37 0%, #f4d03f 50%, #fff8dc 100%);
+}
+
+.btn-chic-primary:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
+.btn-chic-primary .text {
+  font-size: inherit;
+}
+
+.btn-chic-primary .icon {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+/* --- Secondary Button - Glass Dark --- */
+.btn-chic-secondary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: rgba(30, 30, 45, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 4px 15px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-chic-secondary:hover {
+  background: rgba(127, 29, 29, 0.6);
+  color: #fecaca;
+  border-color: rgba(220, 38, 38, 0.4);
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 25px rgba(220, 38, 38, 0.3),
+    0 0 20px rgba(220, 38, 38, 0.2);
+}
+
+.btn-chic-secondary:active {
+  transform: translateY(0);
+}
+
+.btn-chic-secondary .text {
+  font-size: inherit;
+}
+
+.btn-chic-secondary .icon {
+  font-size: 1.1rem;
+  transition: transform 0.3s ease;
+}
+
+.btn-chic-secondary:hover .icon {
+  transform: rotate(90deg);
+}
+
+/* --- Keyboard Hints Dark --- */
+.popup-actions-chic::after {
+  content: "Enter للتطبيق • Escape للإلغاء";
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 14px;
+  border-radius: 12px;
+  letter-spacing: 0.5px;
+}
+
+/* =========================================
+   📱 RESPONSIVE DARK LUXURY
+   ========================================= */
+@media (max-width: 900px) {
+  .popup-content-grid {
+    grid-template-columns: 1fr;
+    padding: 20px 25px 30px;
+  }
+
+  .content-col {
+    gap: 18px;
+  }
+}
+
+@media (max-width: 576px) {
+  .redesign-mode {
+    border-radius: 28px 28px 0 0 !important;
+    margin-top: auto;
+  }
+
+  .popup-header-chic {
+    padding: 20px 25px;
+  }
+
+  .header-text-stack h3 {
+    font-size: 1.2rem;
+  }
+
+  .glass-section {
+    padding: 22px;
+    border-radius: 20px;
+  }
+
+  .popup-actions-chic {
+    flex-direction: column;
+    padding: 20px;
+    gap: 12px;
+  }
+
+  .btn-chic-primary,
+  .btn-chic-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .popup-actions-chic::after {
+    position: static;
+    transform: none;
+    margin-top: 8px;
+  }
+}
+
+
 
 /* ========== Calc Preview - Modern & Clean ========== */
 .calc-preview {
