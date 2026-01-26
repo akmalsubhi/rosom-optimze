@@ -4737,16 +4737,7 @@ function renderCertificatesList(certs, resetScroll = true) {
     return;
   }
 
-  // عرض إحصائيات التحميل
-  const loadedCount = certs.length;
-  const totalCount = CertificatesListState.totalCount;
-  const statsHtml = `
-    <div class="certs-stats">
-      <span>📊 عرض ${toArabicNumber(loadedCount)} من ${toArabicNumber(totalCount)} شهادة</span>
-    </div>
-  `;
-
-  let html = statsHtml + '<div class="certs-list">';
+  let html = '<div class="certs-list">';
 
   certs.forEach((cert) => {
     const modifiedClass = cert.is_modified ? "modified" : "original";
@@ -4779,17 +4770,9 @@ function renderCertificatesList(certs, resetScroll = true) {
 
   html += "</div>";
 
-  // زر تحميل المزيد
+  // Loading indicator for infinite scroll
   if (CertificatesListState.hasMore) {
-    const remaining = totalCount - loadedCount;
-    html += `
-      <div class="load-more-container">
-        <button onclick="loadMoreCertificates()" class="btn-load-more" id="loadMoreBtn">
-          📥 تحميل المزيد (${toArabicNumber(Math.min(remaining, CertificatesListState.pageSize))} شهادة)
-        </button>
-        <span class="remaining-count">متبقي ${toArabicNumber(remaining)} شهادة</span>
-      </div>
-    `;
+    html += '<div class="infinite-scroll-loader" id="infiniteScrollLoader">⏳ جاري تحميل المزيد...</div>';
   }
 
   container.innerHTML = html;
@@ -4799,8 +4782,37 @@ function renderCertificatesList(certs, resetScroll = true) {
     container.scrollTop = 0;
   }
 
+  // Setup infinite scroll listener
+  setupInfiniteScroll();
+
   // تحديث آخر نتائج البحث
   AppState.cache.lastSearchResults = certs;
+}
+
+// إعداد infinite scroll
+function setupInfiniteScroll() {
+  const container = Utils.getElement("certsListContainer", false);
+  if (!container) return;
+
+  // إزالة المستمع القديم إن وجد
+  container.removeEventListener('scroll', handleInfiniteScroll);
+  // إضافة المستمع الجديد
+  container.addEventListener('scroll', handleInfiniteScroll);
+}
+
+// معالجة حدث التمرير للـ infinite scroll
+function handleInfiniteScroll() {
+  const container = Utils.getElement("certsListContainer", false);
+  if (!container) return;
+
+  // التحقق من أننا وصلنا لنهاية القائمة (قبل 100 بكسل)
+  const scrollPosition = container.scrollTop + container.clientHeight;
+  const scrollHeight = container.scrollHeight;
+
+  if (scrollPosition >= scrollHeight - 100) {
+    // وصلنا للنهاية، تحميل المزيد
+    loadMoreCertificates();
+  }
 }
 
 async function loadAndClose(id) {

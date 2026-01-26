@@ -10,70 +10,92 @@ let SQL;
 let db;
 
 // ========== نظام التخزين المؤقت (Query Cache) ==========
+// ✅ بعد - Periodic cleanup
 const QueryCache = {
   cache: new Map(),
-  maxSize: 100,        // الحد الأقصى للعناصر
-  defaultTTL: 30000,   // 30 ثانية
+  maxSize: 100,
+  defaultTTL: 30000,
+  cleanupInterval: null,
 
-  // الحصول على قيمة من الـ cache
+  init() {
+    // ✅ Periodic cleanup كل دقيقة
+    this.cleanupInterval = setInterval(() => {
+      this.cleanup();
+    }, 60000);
+  },
+
+  cleanup() {
+    const now = Date.now();
+    let cleaned = 0;
+    
+    for (const [key, item] of this.cache.entries()) {
+      if (now > item.expiry) {
+        this.cache.delete(key);
+        cleaned++;
+      }
+    }
+    
+    if (cleaned > 0) {
+      console.log(`🧹 Cache cleanup: removed ${cleaned} expired items`);
+    }
+  },
+
   get(key) {
     const item = this.cache.get(key);
     if (!item) return null;
 
-    // التحقق من انتهاء الصلاحية
     if (Date.now() > item.expiry) {
       this.cache.delete(key);
       return null;
     }
 
+    // ✅ Update access time for LRU
+    item.lastAccess = Date.now();
     return item.value;
   },
 
-  // حفظ قيمة في الـ cache
   set(key, value, ttl = this.defaultTTL) {
-    // حذف القديم إذا وصلنا للحد الأقصى
+    // ✅ LRU eviction بدل FIFO
     if (this.cache.size >= this.maxSize) {
-      const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
+      let oldestKey = null;
+      let oldestTime = Infinity;
+      
+      for (const [k, v] of this.cache.entries()) {
+        if (v.lastAccess < oldestTime) {
+          oldestTime = v.lastAccess;
+          oldestKey = k;
+        }
+      }
+      
+      if (oldestKey) this.cache.delete(oldestKey);
     }
 
     this.cache.set(key, {
       value,
-      expiry: Date.now() + ttl
+      expiry: Date.now() + ttl,
+      lastAccess: Date.now()
     });
   },
 
-  // مسح الـ cache (عند تعديل البيانات)
-  invalidate(pattern = null) {
-    if (!pattern) {
-      this.cache.clear();
-      return;
+  destroy() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
     }
-
-    // مسح المفاتيح التي تحتوي على النمط
-    for (const key of this.cache.keys()) {
-      if (key.includes(pattern)) {
-        this.cache.delete(key);
-      }
-    }
-  },
-
-  // إحصائيات الـ cache
-  stats() {
-    return {
-      size: this.cache.size,
-      maxSize: this.maxSize
-    };
+    this.cache.clear();
   }
 };
 
+
 // ========== نظام الحفظ المجمّع (Batch Save) ==========
+// ✅ بعد
 const BatchSave = {
   pending: false,
   timeout: null,
-  delay: 500,  // تأخير 500ms قبل الحفظ
+  delay: 500,
+  retryCount: 0,
+  maxRetries: 3,
 
-  // جدولة الحفظ
   schedule() {
     if (this.timeout) {
       clearTimeout(this.timeout);
@@ -85,8 +107,13 @@ const BatchSave = {
     }, this.delay);
   },
 
-  // تنفيذ الحفظ الفوري
   flush() {
+    // ✅ نظّف الـ timeout أول حاجة
+    if (this.timeout) {
+      clearTimeout(this.timeout);
+      this.timeout = null;
+    }
+
     if (!this.pending) return;
 
     try {
@@ -94,22 +121,32 @@ const BatchSave = {
       const buffer = Buffer.from(binary);
       fs.writeFileSync(dbPath, buffer);
       this.pending = false;
+      this.retryCount = 0;  // ✅ Reset retry counter
       console.log('💾 Database saved (batch)');
     } catch (err) {
       console.error('BatchSave error:', err);
+      this.pending = false;  // ✅ Reset pending حتى لو فشل
+      
+      // ✅ Retry logic
+      if (this.retryCount < this.maxRetries) {
+        this.retryCount++;
+        console.log(`🔄 Retrying save (${this.retryCount}/${this.maxRetries})...`);
+        setTimeout(() => this.schedule(), 1000 * this.retryCount);
+      }
     }
+  },
 
+  cleanup() {
     if (this.timeout) {
       clearTimeout(this.timeout);
       this.timeout = null;
     }
-  },
-
-  // التنظيف عند إيقاف التطبيق
-  cleanup() {
-    this.flush();
+    if (this.pending) {
+      this.flush();
+    }
   }
 };
+
 
 // ========== تتبع الأداء ==========
 const PerformanceTracker = {
@@ -886,13 +923,20 @@ function getAllCertificates(options = {}) {
  * هذه الدالة أسرع بكثير من تحميل كل الشهادات
  */
 function getUniqueValues(column, options = {}) {
-  const validColumns = ['activity', 'name', 'location'];
-  if (!validColumns.includes(column)) {
+  // Whitelist مع mapping صريح
+  const columnMap = {
+    'activity': 'activity',
+    'name': 'name', 
+    'location': 'location'
+  };
+  
+  const safeColumn = columnMap[column];
+  if (!safeColumn) {
     console.error('Invalid column for getUniqueValues:', column);
     return [];
   }
 
-  let query = `SELECT DISTINCT ${column} FROM certificates WHERE ${column} IS NOT NULL AND ${column} != ''`;
+  let query = `SELECT DISTINCT ${safeColumn} FROM certificates WHERE ${safeColumn} IS NOT NULL AND ${safeColumn} != ''`;
   const params = [];
 
   // فلترة حسب الحالة
