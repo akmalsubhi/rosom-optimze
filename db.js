@@ -27,14 +27,14 @@ const QueryCache = {
   cleanup() {
     const now = Date.now();
     let cleaned = 0;
-    
+
     for (const [key, item] of this.cache.entries()) {
       if (now > item.expiry) {
         this.cache.delete(key);
         cleaned++;
       }
     }
-    
+
     if (cleaned > 0) {
       console.log(`🧹 Cache cleanup: removed ${cleaned} expired items`);
     }
@@ -59,14 +59,14 @@ const QueryCache = {
     if (this.cache.size >= this.maxSize) {
       let oldestKey = null;
       let oldestTime = Infinity;
-      
+
       for (const [k, v] of this.cache.entries()) {
         if (v.lastAccess < oldestTime) {
           oldestTime = v.lastAccess;
           oldestKey = k;
         }
       }
-      
+
       if (oldestKey) this.cache.delete(oldestKey);
     }
 
@@ -83,6 +83,12 @@ const QueryCache = {
       this.cleanupInterval = null;
     }
     this.cache.clear();
+  },
+
+  // ⭐ مسح الـ cache عند تعديل البيانات
+  invalidate() {
+    this.cache.clear();
+    console.log('🗑️ Cache invalidated');
   }
 };
 
@@ -126,7 +132,7 @@ const BatchSave = {
     } catch (err) {
       console.error('BatchSave error:', err);
       this.pending = false;  // ✅ Reset pending حتى لو فشل
-      
+
       // ✅ Retry logic
       if (this.retryCount < this.maxRetries) {
         this.retryCount++;
@@ -926,10 +932,10 @@ function getUniqueValues(column, options = {}) {
   // Whitelist مع mapping صريح
   const columnMap = {
     'activity': 'activity',
-    'name': 'name', 
+    'name': 'name',
     'location': 'location'
   };
-  
+
   const safeColumn = columnMap[column];
   if (!safeColumn) {
     console.error('Invalid column for getUniqueValues:', column);
