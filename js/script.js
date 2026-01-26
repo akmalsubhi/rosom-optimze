@@ -1871,14 +1871,19 @@ function closeFeesPopup() {
 
 // ========== تحديث زر الرسوم ==========
 function updateFeesButtonText() {
-  const feesBtn = Utils.$(".fees-btn");
+  const feesBtn = Utils.$(".fees-btn-premium");
   if (!feesBtn) return;
 
+  const btnIcon = feesBtn.querySelector(".btn-icon");
+  const btnText = feesBtn.querySelector(".btn-text");
+
   if (currentCertificateId) {
-    feesBtn.textContent = "✏️ تعديل البيانات";
+    if (btnIcon) btnIcon.textContent = "✏️";
+    if (btnText) btnText.textContent = "تعديل البيانات";
     feesBtn.classList.add("edit-mode");
   } else {
-    feesBtn.textContent = "➕ رسوم جديدة";
+    if (btnIcon) btnIcon.textContent = "💎";
+    if (btnText) btnText.textContent = "رسوم جديدة";
     feesBtn.classList.remove("edit-mode");
   }
 }
@@ -3937,7 +3942,7 @@ const PrintSystem = {
 
   prepare() {
     Utils.$$(
-      ".fees-btn, .btn-certificates, .btn-new, .btn-stats, .btn-save, #certificateStatus, .popup-overlay, .modal-overlay"
+      ".fees-btn, .fees-btn-premium, .btn-certificates, .btn-new, .btn-stats, .btn-save, #certificateStatus, .popup-overlay, .popup-overlay-premium, .modal-overlay"
     ).forEach((el) => {
       el.setAttribute("data-print-hidden", "true");
       el.style.display = "none";
@@ -8361,4 +8366,42 @@ document.querySelectorAll('#inputActivity, #inputName, #inputLocation, #inputAre
   }
 });
 
+// ========== نظام تبديل المظهر (Theme Toggle) ==========
+function toggleThemeChic() {
+  const popupBox = document.querySelector('.popup-box.redesign-mode');
+  if (!popupBox) return;
 
+  const isDark = popupBox.classList.toggle('dark-luxury');
+  localStorage.setItem('chicTheme', isDark ? 'dark' : 'light');
+
+  // تغيير أيقونة الزر
+  const icon = document.querySelector('.theme-icon');
+  if (icon) {
+    icon.textContent = isDark ? '☀️' : '🌓';
+  }
+
+  showNotification(isDark ? '🌙 وضع الرفاهية المظلم' : '✨ الوضع العصري المضيء', 'info');
+}
+
+// تهيئة المظهر عند الفتح
+function initChicTheme() {
+  const savedTheme = localStorage.getItem('chicTheme');
+  const popupBox = document.querySelector('.popup-box.redesign-mode');
+
+  if (savedTheme === 'dark' && popupBox) {
+    popupBox.classList.add('dark-luxury');
+    const icon = document.querySelector('.theme-icon');
+    if (icon) icon.textContent = '☀️';
+  }
+}
+
+// تصدير الوظائف للنافذة
+window.toggleThemeChic = toggleThemeChic;
+window.initChicTheme = initChicTheme;
+
+// ربط التهيئة بفتح الـ popup
+const originalOpenFeesPopup = window.openFeesPopup;
+window.openFeesPopup = function () {
+  if (originalOpenFeesPopup) originalOpenFeesPopup();
+  setTimeout(initChicTheme, 10); // تأكد من وجود الـ DOM
+};
