@@ -4099,3 +4099,364 @@ body.has-comparison-bar.details-open {
   font-weight: bold;
   cursor: pointer;
 }
+
+/* ========== زر النسخ الاحتياطي ========== */
+.btn-backup {
+  position: fixed;
+  bottom: 20px;
+  right: 380px;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(5, 150, 105, 0.4);
+  z-index: 9999;
+  transition: all 0.3s ease;
+}
+
+.btn-backup:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(5, 150, 105, 0.5);
+}
+
+/* ========== Modal النسخ الاحتياطي ========== */
+.backup-modal {
+  max-width: 700px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.backup-modal .modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* معلومات الـ Backup */
+.backup-info-section {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.backup-status-card,
+.backup-location-card {
+  flex: 1;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 1px solid #22c55e;
+  border-radius: 12px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.backup-status-icon,
+.backup-location-icon {
+  font-size: 24px;
+  background: #22c55e;
+  color: white;
+  width: 45px;
+  height: 45px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.backup-status-content,
+.backup-location-content {
+  flex: 1;
+}
+
+.backup-status-title,
+.backup-location-title {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.backup-status-time,
+.backup-location-path {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  word-break: break-all;
+}
+
+.btn-open-folder {
+  background: #22c55e;
+  color: white;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.btn-open-folder:hover {
+  background: #16a34a;
+  transform: scale(1.05);
+}
+
+/* أزرار الإجراءات */
+.backup-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.btn-backup-action {
+  flex: 1;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.btn-backup-action.btn-create {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+}
+
+.btn-backup-action.btn-create:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+.action-icon {
+  font-size: 18px;
+}
+
+/* قائمة النسخ */
+.backup-list-section {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 15px;
+}
+
+.backup-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.backup-list-header h4 {
+  margin: 0;
+  font-size: 15px;
+  color: #1e293b;
+}
+
+.btn-refresh {
+  background: #e2e8f0;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btn-refresh:hover {
+  background: #cbd5e1;
+  transform: rotate(180deg);
+}
+
+.backup-list {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.loading-backups {
+  text-align: center;
+  padding: 30px;
+  color: #64748b;
+}
+
+.no-backups {
+  text-align: center;
+  padding: 30px;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* عنصر النسخة الاحتياطية */
+.backup-item {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 15px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s;
+}
+
+.backup-item:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+.backup-item-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.backup-item-icon {
+  font-size: 20px;
+  width: 40px;
+  height: 40px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.backup-item-icon.auto {
+  background: #dbeafe;
+}
+
+.backup-item-icon.manual {
+  background: #dcfce7;
+}
+
+.backup-item-details {
+  flex: 1;
+}
+
+.backup-item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 3px;
+}
+
+.backup-item-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.backup-item-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.backup-item-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-restore,
+.btn-delete-backup {
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-restore {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.btn-restore:hover {
+  background: #bfdbfe;
+}
+
+.btn-delete-backup {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.btn-delete-backup:hover {
+  background: #fecaca;
+}
+
+/* Footer */
+.backup-modal .modal-footer {
+  padding: 15px 20px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-close-modal {
+  background: #e2e8f0;
+  color: #475569;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-close-modal:hover {
+  background: #cbd5e1;
+}
+
+/* إشعار النجاح */
+.backup-success-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  padding: 15px 25px;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(34, 197, 94, 0.4);
+  z-index: 99999;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@media print {
+
+  .btn-backup,
+  #backupModal {
+    display: none !important;
+  }
+}

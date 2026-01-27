@@ -1642,6 +1642,14 @@ const API = {
   get print() {
     return window.electronAPI?.print || null;
   },
+
+  get backup() {
+    return window.electronAPI?.backup || null;
+  },
+
+  get onShortcut() {
+    return window.electronAPI?.onShortcut || null;
+  },
 };
 
 // Alias للتوافق
@@ -8361,3 +8369,290 @@ document.querySelectorAll('#inputActivity, #inputName, #inputLocation, #inputAre
   }
 });
 
+// ========== نظام النسخ الاحتياطي (Backup) ==========
+
+/**
+ * فتح Modal النسخ الاحتياطي
+ */
+async function openBackupModal() {
+  const modal = document.getElementById('backupModal');
+  if (modal) {
+    modal.classList.add('active');
+    modal.style.display = 'flex';
+
+    // تحميل البيانات
+    await loadBackupInfo();
+    await refreshBackupList();
+  }
+}
+
+/**
+ * إغلاق Modal النسخ الاحتياطي
+ */
+function closeBackupModal() {
+  const modal = document.getElementById('backupModal');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+  }
+}
+
+/**
+ * تحميل معلومات آخر نسخة والمسار
+ */
+async function loadBackupInfo() {
+  try {
+    // جلب معلومات آخر نسخة
+    const lastBackup = await API.backup.getLastInfo();
+    const lastBackupEl = document.getElementById('lastBackupInfo');
+
+    if (lastBackupEl) {
+      if (lastBackup) {
+        const date = new Date(lastBackup.timestamp);
+        lastBackupEl.innerHTML = `
+          <span>${formatBackupDate(date)}</span>
+          <span style="font-size: 11px; color: #64748b; margin-right: 8px;">(${lastBackup.sizeFormatted})</span>
+        `;
+      } else {
+        lastBackupEl.textContent = 'لا توجد نسخ احتياطية';
+      }
+    }
+
+    // جلب مسار المجلد
+    const backupDir = await API.backup.getDirectory();
+    const backupDirEl = document.getElementById('backupDirectory');
+
+    if (backupDirEl) {
+      if (backupDir) {
+        // عرض آخر جزء من المسار فقط
+        const shortPath = backupDir.split('\\').slice(-3).join('\\');
+        backupDirEl.textContent = '...' + shortPath;
+        backupDirEl.title = backupDir; // المسار الكامل في tooltip
+      } else {
+        backupDirEl.textContent = 'غير محدد';
+      }
+    }
+  } catch (err) {
+    console.error('Error loading backup info:', err);
+  }
+}
+
+/**
+ * تحديث قائمة النسخ الاحتياطية
+ */
+async function refreshBackupList() {
+  const container = document.getElementById('backupListContainer');
+  if (!container) return;
+
+  container.innerHTML = '<div class="loading-backups">جاري تحميل النسخ...</div>';
+
+  try {
+    const backups = await API.backup.list();
+
+    if (!backups || backups.length === 0) {
+      container.innerHTML = '<div class="no-backups">لا توجد نسخ احتياطية</div>';
+      return;
+    }
+
+    container.innerHTML = backups.map(backup => `
+      <div class="backup-item" data-filename="${backup.fileName}">
+        <div class="backup-item-info">
+          <div class="backup-item-icon ${backup.isAutomatic ? 'auto' : 'manual'}">
+            ${backup.isAutomatic ? '🔄' : '📦'}
+          </div>
+          <div class="backup-item-details">
+            <div class="backup-item-name">${backup.isAutomatic ? 'نسخة تلقائية' : 'نسخة يدوية'}</div>
+            <div class="backup-item-meta">
+              <span>📅 ${formatBackupDate(new Date(backup.timestamp))}</span>
+              <span>📁 ${backup.sizeFormatted}</span>
+            </div>
+          </div>
+        </div>
+        <div class="backup-item-actions">
+          <button onclick="restoreBackup('${backup.fileName}')" class="btn-restore" title="استعادة">
+            ↩️ استعادة
+          </button>
+          <button onclick="deleteBackup('${backup.fileName}')" class="btn-delete-backup" title="حذف">
+            🗑️
+          </button>
+        </div>
+      </div>
+    `).join('');
+
+  } catch (err) {
+    console.error('Error loading backup list:', err);
+    container.innerHTML = '<div class="no-backups" style="color: #dc2626;">حدث خطأ أثناء تحميل النسخ</div>';
+  }
+}
+
+/**
+ * تنسيق تاريخ الـ Backup
+ */
+function formatBackupDate(date) {
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'الآن';
+  if (diffMins < 60) return `منذ ${diffMins} دقيقة`;
+  if (diffHours < 24) return `منذ ${diffHours} ساعة`;
+  if (diffDays < 7) return `منذ ${diffDays} يوم`;
+
+  // تنسيق التاريخ
+  return date.toLocaleDateString('ar-EG', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+/**
+ * إنشاء نسخة احتياطية يدوية
+ */
+async function createManualBackup() {
+  try {
+    showBackupToast('جاري إنشاء النسخة الاحتياطية...', 'info');
+
+    const result = await API.backup.create(false);
+
+    if (result.success) {
+      showBackupToast(`✅ تم إنشاء النسخة الاحتياطية بنجاح (${result.sizeFormatted})`, 'success');
+      await loadBackupInfo();
+      await refreshBackupList();
+    } else {
+      showBackupToast('❌ فشل إنشاء النسخة الاحتياطية: ' + result.error, 'error');
+    }
+  } catch (err) {
+    console.error('Create backup error:', err);
+    showBackupToast('❌ حدث خطأ أثناء إنشاء النسخة الاحتياطية', 'error');
+  }
+}
+
+/**
+ * استعادة من نسخة احتياطية
+ */
+async function restoreBackup(fileName) {
+  // تأكيد الاستعادة
+  const confirmed = confirm(
+    '⚠️ تحذير: استعادة النسخة الاحتياطية\n\n' +
+    'سيتم استبدال جميع البيانات الحالية بالبيانات الموجودة في النسخة الاحتياطية.\n' +
+    'سيتم حفظ نسخة من البيانات الحالية قبل الاستعادة.\n\n' +
+    'هل أنت متأكد من المتابعة؟'
+  );
+
+  if (!confirmed) return;
+
+  try {
+    showBackupToast('جاري استعادة النسخة الاحتياطية...', 'info');
+
+    const result = await API.backup.restore(fileName);
+
+    if (result.success) {
+      showBackupToast('✅ تم استعادة النسخة الاحتياطية بنجاح!', 'success');
+
+      // تحديث البيانات
+      await loadBackupInfo();
+      await refreshBackupList();
+
+      // إعادة تحميل الصفحة بعد ثانيتين
+      setTimeout(() => {
+        if (confirm('تم استعادة النسخة بنجاح.\n\nهل تريد إعادة تحميل الصفحة لتحديث البيانات؟')) {
+          window.location.reload();
+        }
+      }, 1000);
+    } else {
+      showBackupToast('❌ فشل استعادة النسخة: ' + result.error, 'error');
+    }
+  } catch (err) {
+    console.error('Restore backup error:', err);
+    showBackupToast('❌ حدث خطأ أثناء استعادة النسخة الاحتياطية', 'error');
+  }
+}
+
+/**
+ * حذف نسخة احتياطية
+ */
+async function deleteBackup(fileName) {
+  const confirmed = confirm('هل أنت متأكد من حذف هذه النسخة الاحتياطية؟\n\nلا يمكن التراجع عن هذا الإجراء.');
+
+  if (!confirmed) return;
+
+  try {
+    const result = await API.backup.delete(fileName);
+
+    if (result.success) {
+      showBackupToast('✅ تم حذف النسخة الاحتياطية', 'success');
+      await loadBackupInfo();
+      await refreshBackupList();
+    } else {
+      showBackupToast('❌ فشل حذف النسخة: ' + result.error, 'error');
+    }
+  } catch (err) {
+    console.error('Delete backup error:', err);
+    showBackupToast('❌ حدث خطأ أثناء حذف النسخة', 'error');
+  }
+}
+
+/**
+ * فتح مجلد النسخ الاحتياطية
+ */
+async function openBackupFolder() {
+  try {
+    const result = await API.backup.openFolder();
+    if (!result.success) {
+      showBackupToast('❌ ' + result.error, 'error');
+    }
+  } catch (err) {
+    console.error('Open folder error:', err);
+    showBackupToast('❌ فشل فتح المجلد', 'error');
+  }
+}
+
+/**
+ * عرض إشعار Backup
+ */
+function showBackupToast(message, type = 'success') {
+  // إزالة أي toast موجود
+  const existingToast = document.querySelector('.backup-success-toast');
+  if (existingToast) existingToast.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'backup-success-toast';
+
+  // تغيير اللون حسب النوع
+  if (type === 'error') {
+    toast.style.background = 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)';
+  } else if (type === 'info') {
+    toast.style.background = 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)';
+  }
+
+  toast.innerHTML = `<span>${message}</span>`;
+  document.body.appendChild(toast);
+
+  // إزالة بعد 4 ثواني
+  setTimeout(() => {
+    toast.style.animation = 'slideDown 0.3s ease reverse';
+    setTimeout(() => toast.remove(), 300);
+  }, type === 'info' ? 2000 : 4000);
+}
+
+// إضافة للنافذة العامة
+window.openBackupModal = openBackupModal;
+window.closeBackupModal = closeBackupModal;
+window.createManualBackup = createManualBackup;
+window.restoreBackup = restoreBackup;
+window.deleteBackup = deleteBackup;
+window.openBackupFolder = openBackupFolder;
+window.refreshBackupList = refreshBackupList;
+
+// إغلاق modal عند النقر خارجه
+document.addEventListener('click', (e) => {
+  const backupModal = document.getElementById('backupModal');
+  if (e.target === backupModal) {
+    closeBackupModal();
+  }
+});

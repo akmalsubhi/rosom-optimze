@@ -45,6 +45,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
         create: (certId, data) => ipcRenderer.invoke('non-payment:create', certId, data),
         get: (id) => ipcRenderer.invoke('non-payment:get', id),
         getByCertificate: (certId) => ipcRenderer.invoke('non-payment:get-by-certificate', certId),
-        cancel: (certId) => ipcRenderer.invoke('non-payment:cancel', certId)  // ⭐ إضافة جديدة
+        cancel: (certId) => ipcRenderer.invoke('non-payment:cancel', certId)
+    },
+
+    // ⭐ نظام النسخ الاحتياطي
+    backup: {
+        create: (isAutomatic = false) => ipcRenderer.invoke('backup:create', isAutomatic),
+        restore: (backupFileName) => ipcRenderer.invoke('backup:restore', backupFileName),
+        list: () => ipcRenderer.invoke('backup:list'),
+        delete: (backupFileName) => ipcRenderer.invoke('backup:delete', backupFileName),
+        getLastInfo: () => ipcRenderer.invoke('backup:getLastInfo'),
+        getDirectory: () => ipcRenderer.invoke('backup:getDirectory'),
+        openFolder: () => ipcRenderer.invoke('backup:openFolder')
     }
 });

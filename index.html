@@ -781,11 +781,69 @@
   <!-- زر الإحصائيات -->
   <button onclick="showStats()" class="btn-stats">📊 الإحصائيات</button>
 
+  <!-- زر النسخ الاحتياطي -->
+  <button onclick="openBackupModal()" class="btn-backup">💾 النسخ الاحتياطي</button>
+
   <!-- زر حفظ الشهادة -->
   <button onclick="saveCertificate()" class="btn-save">💾 حفظ الشهادة</button>
 
   <!-- حالة الشهادة الحالية -->
   <div id="certificateStatus"></div>
+
+  <!-- ========== Modal النسخ الاحتياطي ========== -->
+  <div id="backupModal" class="modal-overlay">
+    <div class="modal-content backup-modal">
+      <div class="modal-header">
+        <h3>💾 إدارة النسخ الاحتياطية</h3>
+        <button onclick="closeBackupModal()" class="close-btn">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- معلومات آخر نسخة -->
+        <div class="backup-info-section">
+          <div class="backup-status-card">
+            <div class="backup-status-icon">🔒</div>
+            <div class="backup-status-content">
+              <div class="backup-status-title">آخر نسخة احتياطية</div>
+              <div id="lastBackupInfo" class="backup-status-time">جاري التحميل...</div>
+            </div>
+          </div>
+
+          <div class="backup-location-card">
+            <div class="backup-location-icon">📁</div>
+            <div class="backup-location-content">
+              <div class="backup-location-title">مكان الحفظ</div>
+              <div id="backupDirectory" class="backup-location-path">جاري التحميل...</div>
+            </div>
+            <button onclick="openBackupFolder()" class="btn-open-folder" title="فتح المجلد">📂</button>
+          </div>
+        </div>
+
+        <!-- أزرار الإجراءات -->
+        <div class="backup-actions">
+          <button onclick="createManualBackup()" class="btn-backup-action btn-create">
+            <span class="action-icon">➕</span>
+            <span class="action-text">إنشاء نسخة يدوية</span>
+          </button>
+        </div>
+
+        <!-- قائمة النسخ الاحتياطية -->
+        <div class="backup-list-section">
+          <div class="backup-list-header">
+            <h4>📋 النسخ المتاحة</h4>
+            <button onclick="refreshBackupList()" class="btn-refresh" title="تحديث">🔄</button>
+          </div>
+          <div id="backupListContainer" class="backup-list">
+            <div class="loading-backups">جاري تحميل النسخ...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button onclick="closeBackupModal()" class="btn-close-modal">إغلاق</button>
+      </div>
+    </div>
+  </div>
 
   <!-- قائمة الشهادات (Modal) -->
   <div id="certsModal" class="modal-overlay">

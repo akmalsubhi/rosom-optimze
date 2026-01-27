@@ -130,6 +130,10 @@ async function initializeApp() {
         sendProgress('تهيئة قاعدة البيانات...', 'جاري الاتصال', 20);
         await db.init();
 
+        // ⭐ تهيئة نظام النسخ الاحتياطي
+        sendProgress('تهيئة نظام النسخ الاحتياطي...', 'جاري التحضير', 30);
+        db.BackupSystem.init();
+
         // خطوة 2: تحميل الإعدادات
         sendProgress('تحميل إعدادات النظام...', 'قراءة الملفات', 40);
         await new Promise(resolve => setTimeout(resolve, 300));
@@ -203,6 +207,10 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
     console.log('🔄 Saving database before quit...');
     try {
+        // ⭐ عمل backup نهائي قبل الإغلاق
+        if (db.BackupSystem) {
+            db.BackupSystem.cleanup();
+        }
         if (db.saveImmediate) {
             db.saveImmediate();
         }
@@ -455,5 +463,83 @@ ipcMain.handle('save-file', async (event, { filePath, data }) => {
     } catch (err) {
         console.error('save-file error', err);
         throw err;
+    }
+});
+
+// ========== نظام النسخ الاحتياطي (Backup) ==========
+
+// إنشاء نسخة احتياطية يدوية
+ipcMain.handle('backup:create', async (event, isAutomatic = false) => {
+    try {
+        return db.BackupSystem.createBackup(isAutomatic);
+    } catch (err) {
+        console.error('backup:create error', err);
+        return { success: false, error: err.message };
+    }
+});
+
+// استعادة من نسخة احتياطية
+ipcMain.handle('backup:restore', async (event, backupFileName) => {
+    try {
+        return await db.BackupSystem.restoreBackup(backupFileName);
+    } catch (err) {
+        console.error('backup:restore error', err);
+        return { success: false, error: err.message };
+    }
+});
+
+// جلب قائمة النسخ الاحتياطية
+ipcMain.handle('backup:list', async () => {
+    try {
+        return db.BackupSystem.getBackupList();
+    } catch (err) {
+        console.error('backup:list error', err);
+        return [];
+    }
+});
+
+// حذف نسخة احتياطية
+ipcMain.handle('backup:delete', async (event, backupFileName) => {
+    try {
+        return db.BackupSystem.deleteBackup(backupFileName);
+    } catch (err) {
+        console.error('backup:delete error', err);
+        return { success: false, error: err.message };
+    }
+});
+
+// جلب معلومات آخر نسخة احتياطية
+ipcMain.handle('backup:getLastInfo', async () => {
+    try {
+        return db.BackupSystem.getLastBackupInfo();
+    } catch (err) {
+        console.error('backup:getLastInfo error', err);
+        return null;
+    }
+});
+
+// جلب مسار مجلد النسخ الاحتياطية
+ipcMain.handle('backup:getDirectory', async () => {
+    try {
+        return db.BackupSystem.getBackupDirectory();
+    } catch (err) {
+        console.error('backup:getDirectory error', err);
+        return null;
+    }
+});
+
+// فتح مجلد النسخ الاحتياطية
+ipcMain.handle('backup:openFolder', async () => {
+    try {
+        const backupDir = db.BackupSystem.getBackupDirectory();
+        if (backupDir && fs.existsSync(backupDir)) {
+            const { shell } = require('electron');
+            shell.openPath(backupDir);
+            return { success: true };
+        }
+        return { success: false, error: 'مجلد النسخ الاحتياطية غير موجود' };
+    } catch (err) {
+        console.error('backup:openFolder error', err);
+        return { success: false, error: err.message };
     }
 });

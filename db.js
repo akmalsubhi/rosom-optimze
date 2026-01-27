@@ -1498,6 +1498,280 @@ async function getStats(options = {}) {
 
 
 
+// ========== نظام النسخ الاحتياطي (Backup System) ==========
+const BackupSystem = {
+  backupDir: null,
+  maxBackups: 7,           // الاحتفاظ بآخر 7 نسخ
+  autoBackupInterval: null,
+  autoBackupDelay: 30 * 60 * 1000, // 30 دقيقة
+
+  // تهيئة نظام الـ Backup
+  init() {
+    if (!dataDir) {
+      console.error('❌ BackupSystem: dataDir not set');
+      return;
+    }
+
+    this.backupDir = path.join(dataDir, 'backups');
+
+    // إنشاء مجلد الـ backups لو مش موجود
+    if (!fs.existsSync(this.backupDir)) {
+      fs.mkdirSync(this.backupDir, { recursive: true });
+      console.log('📁 Created backups directory:', this.backupDir);
+    }
+
+    // بدء الـ Auto Backup الدوري
+    this.startAutoBackup();
+
+    console.log('✅ BackupSystem initialized');
+  },
+
+  // عمل نسخة احتياطية
+  createBackup(isAutomatic = true) {
+    try {
+      if (!db || !this.backupDir) {
+        return { success: false, error: 'Database or backup directory not initialized' };
+      }
+
+      // التأكد من حفظ أي تعديلات معلقة
+      BatchSave.flush();
+
+      // إنشاء اسم الملف بالتاريخ والوقت
+      const now = new Date();
+      const timestamp = now.toISOString()
+        .replace(/:/g, '-')
+        .replace(/\./g, '-')
+        .slice(0, 19);
+
+      const backupType = isAutomatic ? 'auto' : 'manual';
+      const backupFileName = `backup_${backupType}_${timestamp}.db`;
+      const backupPath = path.join(this.backupDir, backupFileName);
+
+      // تصدير قاعدة البيانات
+      const binary = db.export();
+      const buffer = Buffer.from(binary);
+      fs.writeFileSync(backupPath, buffer);
+
+      // حذف النسخ القديمة
+      this.cleanupOldBackups();
+
+      const stats = fs.statSync(backupPath);
+      const sizeKB = Math.round(stats.size / 1024);
+
+      console.log(`💾 Backup created: ${backupFileName} (${sizeKB} KB)`);
+
+      return {
+        success: true,
+        fileName: backupFileName,
+        path: backupPath,
+        size: stats.size,
+        sizeFormatted: sizeKB > 1024 ? `${(sizeKB / 1024).toFixed(2)} MB` : `${sizeKB} KB`,
+        timestamp: now.getTime(),
+        isAutomatic
+      };
+    } catch (err) {
+      console.error('❌ Backup error:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  // استعادة من نسخة احتياطية
+  async restoreBackup(backupFileName) {
+    try {
+      const backupPath = path.join(this.backupDir, backupFileName);
+
+      if (!fs.existsSync(backupPath)) {
+        return { success: false, error: 'ملف النسخة الاحتياطية غير موجود' };
+      }
+
+      // عمل نسخة من قاعدة البيانات الحالية قبل الاستعادة
+      const preRestoreBackup = this.createBackup(false);
+      if (!preRestoreBackup.success) {
+        console.warn('⚠️ Could not create pre-restore backup');
+      }
+
+      // قراءة ملف الـ backup
+      const backupBuffer = fs.readFileSync(backupPath);
+
+      // إغلاق قاعدة البيانات الحالية
+      if (db) {
+        db.close();
+      }
+
+      // تحميل الـ backup
+      db = new SQL.Database(new Uint8Array(backupBuffer));
+
+      // حفظ كقاعدة بيانات رئيسية
+      const binary = db.export();
+      const buffer = Buffer.from(binary);
+      fs.writeFileSync(dbPath, buffer);
+
+      // مسح الـ cache
+      QueryCache.invalidate();
+
+      console.log(`✅ Restored from backup: ${backupFileName}`);
+
+      return {
+        success: true,
+        restoredFrom: backupFileName,
+        timestamp: Date.now()
+      };
+    } catch (err) {
+      console.error('❌ Restore error:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  // جلب قائمة النسخ الاحتياطية
+  getBackupList() {
+    try {
+      if (!this.backupDir || !fs.existsSync(this.backupDir)) {
+        return [];
+      }
+
+      const files = fs.readdirSync(this.backupDir);
+      const backups = files
+        .filter(f => f.startsWith('backup_') && f.endsWith('.db'))
+        .map(fileName => {
+          const filePath = path.join(this.backupDir, fileName);
+          const stats = fs.statSync(filePath);
+
+          // استخراج المعلومات من اسم الملف
+          const isAutomatic = fileName.includes('_auto_');
+          const timestampMatch = fileName.match(/(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})/);
+          let timestamp = stats.mtime.getTime();
+
+          if (timestampMatch) {
+            const dateStr = timestampMatch[1].replace(/-/g, (m, offset) => {
+              // أول 2 هم التاريخ، الباقي هو الوقت
+              if (offset < 10) return m;
+              return offset === 13 || offset === 16 ? ':' : m;
+            });
+            timestamp = new Date(dateStr.replace('T', ' ')).getTime() || stats.mtime.getTime();
+          }
+
+          const sizeKB = Math.round(stats.size / 1024);
+
+          return {
+            fileName,
+            path: filePath,
+            size: stats.size,
+            sizeFormatted: sizeKB > 1024 ? `${(sizeKB / 1024).toFixed(2)} MB` : `${sizeKB} KB`,
+            timestamp,
+            isAutomatic,
+            createdAt: stats.mtime
+          };
+        })
+        .sort((a, b) => b.timestamp - a.timestamp); // الأحدث أولاً
+
+      return backups;
+    } catch (err) {
+      console.error('❌ getBackupList error:', err);
+      return [];
+    }
+  },
+
+  // حذف النسخ القديمة (الاحتفاظ بآخر maxBackups فقط)
+  cleanupOldBackups() {
+    try {
+      const backups = this.getBackupList();
+
+      if (backups.length <= this.maxBackups) {
+        return { deleted: 0 };
+      }
+
+      // الاحتفاظ بأحدث maxBackups وحذف الباقي
+      const toDelete = backups.slice(this.maxBackups);
+      let deleted = 0;
+
+      toDelete.forEach(backup => {
+        try {
+          fs.unlinkSync(backup.path);
+          deleted++;
+          console.log(`🗑️ Deleted old backup: ${backup.fileName}`);
+        } catch (err) {
+          console.error(`❌ Could not delete ${backup.fileName}:`, err.message);
+        }
+      });
+
+      return { deleted };
+    } catch (err) {
+      console.error('❌ cleanupOldBackups error:', err);
+      return { deleted: 0, error: err.message };
+    }
+  },
+
+  // حذف نسخة احتياطية محددة
+  deleteBackup(backupFileName) {
+    try {
+      const backupPath = path.join(this.backupDir, backupFileName);
+
+      if (!fs.existsSync(backupPath)) {
+        return { success: false, error: 'الملف غير موجود' };
+      }
+
+      fs.unlinkSync(backupPath);
+      console.log(`🗑️ Deleted backup: ${backupFileName}`);
+
+      return { success: true };
+    } catch (err) {
+      console.error('❌ deleteBackup error:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  // بدء الـ Auto Backup الدوري
+  startAutoBackup() {
+    // إيقاف أي interval موجود
+    this.stopAutoBackup();
+
+    // عمل backup عند بدء التشغيل
+    console.log('🔄 Creating startup backup...');
+    const startupBackup = this.createBackup(true);
+    if (startupBackup.success) {
+      console.log('✅ Startup backup created successfully');
+    }
+
+    // بدء الـ interval
+    this.autoBackupInterval = setInterval(() => {
+      console.log('🔄 Auto backup (periodic)...');
+      this.createBackup(true);
+    }, this.autoBackupDelay);
+
+    console.log(`⏰ Auto backup scheduled every ${this.autoBackupDelay / 60000} minutes`);
+  },
+
+  // إيقاف الـ Auto Backup
+  stopAutoBackup() {
+    if (this.autoBackupInterval) {
+      clearInterval(this.autoBackupInterval);
+      this.autoBackupInterval = null;
+    }
+  },
+
+  // جلب معلومات آخر backup
+  getLastBackupInfo() {
+    const backups = this.getBackupList();
+    if (backups.length === 0) {
+      return null;
+    }
+    return backups[0]; // الأحدث
+  },
+
+  // جلب مسار مجلد الـ Backups
+  getBackupDirectory() {
+    return this.backupDir;
+  },
+
+  // تنظيف عند إغلاق التطبيق
+  cleanup() {
+    this.stopAutoBackup();
+    // عمل backup نهائي قبل الإغلاق
+    console.log('🔄 Creating final backup before exit...');
+    this.createBackup(true);
+  }
+};
+
 module.exports = {
   init,
   setDataPath,
@@ -1525,6 +1799,8 @@ module.exports = {
   saveImmediate,        // حفظ فوري عند إغلاق التطبيق
   QueryCache,           // للتحكم في الـ cache
   BatchSave,            // للتحكم في الحفظ المجمّع
-  PerformanceTracker    // لمراقبة الأداء
+  PerformanceTracker,   // لمراقبة الأداء
+  // ⭐ نظام النسخ الاحتياطي
+  BackupSystem          // للنسخ الاحتياطي والاستعادة
 };
 
