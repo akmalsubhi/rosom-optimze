@@ -45,6 +45,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
         create: (certId, data) => ipcRenderer.invoke('non-payment:create', certId, data),
         get: (id) => ipcRenderer.invoke('non-payment:get', id),
         getByCertificate: (certId) => ipcRenderer.invoke('non-payment:get-by-certificate', certId),
-        cancel: (certId) => ipcRenderer.invoke('non-payment:cancel', certId)  // ⭐ إضافة جديدة
+        cancel: (certId) => ipcRenderer.invoke('non-payment:cancel', certId)
+    },
+
+    // ⭐ الأرشفة
+    archive: {
+        run: (olderThanDays) => ipcRenderer.invoke('archive:run', olderThanDays),
+        getAll: (options) => ipcRenderer.invoke('archive:getAll', options),
+        search: (query) => ipcRenderer.invoke('archive:search', query),
+        restore: (id) => ipcRenderer.invoke('archive:restore', id),
+        getStats: () => ipcRenderer.invoke('archive:stats')
     }
 });

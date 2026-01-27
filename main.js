@@ -457,3 +457,49 @@ ipcMain.handle('save-file', async (event, { filePath, data }) => {
         throw err;
     }
 });
+
+// ========== ⭐ الأرشفة ==========
+ipcMain.handle('archive:run', async (event, olderThanDays) => {
+    try {
+        return db.archiveOldCertificates(olderThanDays);
+    } catch (err) {
+        console.error('archive:run error', err);
+        throw err;
+    }
+});
+
+ipcMain.handle('archive:getAll', async (event, options) => {
+    try {
+        return db.getArchivedCertificates(options);
+    } catch (err) {
+        console.error('archive:getAll error', err);
+        throw err;
+    }
+});
+
+ipcMain.handle('archive:search', async (event, query) => {
+    try {
+        return db.searchArchivedCertificates(query);
+    } catch (err) {
+        console.error('archive:search error', err);
+        throw err;
+    }
+});
+
+ipcMain.handle('archive:restore', async (event, id) => {
+    try {
+        return db.restoreFromArchive(id);
+    } catch (err) {
+        console.error('archive:restore error', err);
+        throw err;
+    }
+});
+
+ipcMain.handle('archive:stats', async () => {
+    try {
+        return db.getArchiveStats();
+    } catch (err) {
+        console.error('archive:stats error', err);
+        throw err;
+    }
+});
