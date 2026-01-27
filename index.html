@@ -1041,32 +1041,35 @@
       </div>
     </div>
 
-    <!-- ========== ⭐ Modal الأرشيف ========== -->
-    <div id="archiveModal" class="modal-overlay">
-      <div class="modal-content certs-modal-large">
-        <div class="modal-header archive-header">
-          <h3>📦 الشهادات المؤرشفة</h3>
-          <div class="archive-stats-mini" id="archiveStatsMini"></div>
-          <button onclick="closeArchiveModal()" class="close-btn">✕</button>
-        </div>
+  </div>
+  </div>
 
-        <div class="modal-body">
-          <!-- البحث في الأرشيف -->
-          <div class="search-row">
-            <div class="search-field main-search">
-              <input type="text" id="searchArchive" placeholder="🔍 بحث في الأرشيف..." oninput="searchArchiveUI()">
-            </div>
-            <button onclick="refreshArchive()" class="btn-refresh">🔄 تحديث</button>
+  <!-- ========== ⭐ Modal الأرشيف ========== -->
+  <div id="archiveModal" class="modal-overlay">
+    <div class="modal-content certs-modal-large">
+      <div class="modal-header archive-header">
+        <h3>📦 الشهادات المؤرشفة</h3>
+        <div class="archive-stats-mini" id="archiveStatsMini"></div>
+        <button onclick="closeArchiveModal()" class="close-btn">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- البحث في الأرشيف -->
+        <div class="search-row">
+          <div class="search-field main-search">
+            <input type="text" id="searchArchive" placeholder="🔍 بحث في الأرشيف..." oninput="searchArchiveUI()">
           </div>
-
-          <!-- قائمة الشهادات المؤرشفة -->
-          <div id="archiveList" class="certs-list"></div>
-
-          <!-- Pagination -->
-          <div id="archivePagination" class="pagination"></div>
+          <button onclick="refreshArchive()" class="btn-refresh">🔄 تحديث</button>
         </div>
+
+        <!-- قائمة الشهادات المؤرشفة -->
+        <div id="archiveList" class="certs-list"></div>
+
+        <!-- Pagination -->
+        <div id="archivePagination" class="pagination"></div>
       </div>
     </div>
+  </div>
 
 </body>
 <script src="js/html2canvas.min.js" defer></script>
