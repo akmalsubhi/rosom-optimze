@@ -109,6 +109,7 @@ body {
 }
 
 @media print {
+
   html,
   body {
     width: 210mm;
@@ -116,6 +117,7 @@ body {
     margin: 0;
     padding: 0;
   }
+
   .page {
     width: 210mm;
     min-height: 297mm;
@@ -171,6 +173,7 @@ body {
   text-align: left;
   margin-left: 50px;
 }
+
 * .logo {
   width: 70px;
   text-align: center;
@@ -184,9 +187,9 @@ body {
 }
 
 .logo-img img {
-    width: 185%;
-    height: auto;
-    max-width: 104px;
+  width: 185%;
+  height: auto;
+  max-width: 104px;
 }
 
 .logo-text {
@@ -225,12 +228,12 @@ body {
 }
 
 .section-title {
-    font-weight: bold;
-    text-align: center;
-    text-decoration: underline;
-    margin: 8px 0 6px 0;
-    font-size: 10pt;
-    font-style: italic;
+  font-weight: bold;
+  text-align: center;
+  text-decoration: underline;
+  margin: 8px 0 6px 0;
+  font-size: 10pt;
+  font-style: italic;
 }
 
 .bank-row::before {
@@ -540,11 +543,11 @@ body {
 }
 
 .approval-image {
-    width: 193%;
-    height: auto;
-    max-width: 790px;
-    margin-top: 23px;
-    margin-right: -32px;
+  width: 193%;
+  height: auto;
+  max-width: 790px;
+  margin-top: 23px;
+  margin-right: -32px;
 }
 
 .approval-title {
@@ -840,7 +843,8 @@ body {
 /* Header الصفحة الرابعة */
 .header-page-four {
   display: flex;
-  flex-direction: row-reverse; /* عكس الاتجاه */
+  flex-direction: row-reverse;
+  /* عكس الاتجاه */
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 12px;
@@ -982,10 +986,12 @@ body {
 }
 
 .date-extra-four {
-  display: block; /* force on its own line */
+  display: block;
+  /* force on its own line */
   font-size: 7pt;
   margin: 1px 0 0 0;
-  text-align: right; /* place under the date, aligned to the right for RTL */
+  text-align: right;
+  /* place under the date, aligned to the right for RTL */
 }
 
 /* التوقيع الصفحة الرابعة */
@@ -995,20 +1001,20 @@ body {
 }
 
 .signature-block-four {
-    display: inline-block;
-    text-align: right;
-    margin-left: -81px;
+  display: inline-block;
+  text-align: right;
+  margin-left: -81px;
 }
 
 .signature-title-four {
-    font-family: "Khalid", serif;
-    font-size: 15pt;
-    margin-right: -79px;
-    font-weight: bold;
-    margin-bottom: 5px;
-    display: block;
-    width: 100%;
-    text-align: left;
+  font-family: "Khalid", serif;
+  font-size: 15pt;
+  margin-right: -79px;
+  font-weight: bold;
+  margin-bottom: 5px;
+  display: block;
+  width: 100%;
+  text-align: left;
 }
 
 .signature-dotted-line {
@@ -1024,12 +1030,12 @@ body {
 }
 
 .signature-fields-four {
-    font-family: "Khalid", serif;
-    font-size: 10pt;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-left: 81px;
+  font-family: "Khalid", serif;
+  font-size: 10pt;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: 81px;
 }
 
 /* make signature fields appear under the title and aligned left */
@@ -1069,8 +1075,8 @@ body {
 }
 
 .date-box {
-    width: 37px;
-    display: inline-block;
+  width: 37px;
+  display: inline-block;
 }
 
 
@@ -1118,11 +1124,9 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(15, 23, 42, 0.92) 0%,
-    rgba(30, 41, 59, 0.95) 100%
-  );
+  background: linear-gradient(135deg,
+      rgba(15, 23, 42, 0.92) 0%,
+      rgba(30, 41, 59, 0.95) 100%);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   z-index: 9999;
@@ -1181,16 +1185,19 @@ body {
 .popup-content::-webkit-scrollbar {
   width: 10px;
 }
+
 .popup-content::-webkit-scrollbar-track {
   background: transparent;
   border-radius: 8px;
 }
+
 .popup-content::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.12);
   border-radius: 8px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
+
 .popup-content::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.22);
 }
@@ -1226,6 +1233,24 @@ body {
 }
 
 .input-group input:focus {
+  outline: none;
+  border-color: #1976d2;
+}
+
+.input-group textarea {
+  width: 100%;
+  padding: 12px 15px;
+  font-size: 11pt;
+  font-family: "Khalid", serif;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  direction: rtl;
+  transition: border-color 0.3s;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.input-group textarea:focus {
   outline: none;
   border-color: #1976d2;
 }
@@ -1271,6 +1296,7 @@ body {
 }
 
 @media print {
+
   .fees-btn,
   .popup-overlay {
     display: none !important;
@@ -1554,6 +1580,7 @@ body {
     transform: translateX(-400px);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -1565,6 +1592,7 @@ body {
     transform: translateX(0);
     opacity: 1;
   }
+
   to {
     transform: translateX(-400px);
     opacity: 0;
@@ -1587,9 +1615,11 @@ body {
   0% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.05);
   }
+
   100% {
     transform: scale(1);
   }
@@ -1639,14 +1669,15 @@ body {
 }
 
 .info-item::before {
-    content: "";
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    background: #000;
-    margin-left: -3px;
-    vertical-align: middle;
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #000;
+  margin-left: -3px;
+  vertical-align: middle;
 }
+
 /* المحتوى */
 .content-page-five {
   font-family: "Sultan", "serif";
@@ -1783,14 +1814,13 @@ body {
 }
 
 .approval-title-five {
-    text-align: center;
-    font-family: "Typesetting", "serif";
-    font-size: 24pt
-;
-    font-weight: bold;
-    font-style: italic;
-    margin-bottom: 5px;
-    margin-top: -6px;
+  text-align: center;
+  font-family: "Typesetting", "serif";
+  font-size: 24pt;
+  font-weight: bold;
+  font-style: italic;
+  margin-bottom: 5px;
+  margin-top: -6px;
 }
 
 .approval-signature {
@@ -1799,30 +1829,30 @@ body {
 }
 
 .approval-rank {
-    font-family: "Sultan", "serif";
-    font-style: italic;
-    font-weight: bold;
-    margin-top: 29px;
-    margin-right: 304px;
-    font-size: 20pt;
+  font-family: "Sultan", "serif";
+  font-style: italic;
+  font-weight: bold;
+  margin-top: 29px;
+  margin-right: 304px;
+  font-size: 20pt;
 }
 
 .approval-name {
-    font-family: "Sultan", "serif";
-    font-style: italic;
-    font-weight: bold;
-    font-size: 20pt;
-    margin: 5px;
-    margin-right: 370px;
+  font-family: "Sultan", "serif";
+  font-style: italic;
+  font-weight: bold;
+  font-size: 20pt;
+  margin: 5px;
+  margin-right: 370px;
 }
 
 .approval-position {
-    font-family: "Sultan", "serif";
-    font-style: italic;
-    font-weight: bold;
-    font-size: 16pt;
-    letter-spacing: -0.5px;
-    margin-right: 248px;
+  font-family: "Sultan", "serif";
+  font-style: italic;
+  font-weight: bold;
+  font-size: 16pt;
+  letter-spacing: -0.5px;
+  margin-right: 248px;
 }
 
 .approval-dept {
@@ -1936,12 +1966,15 @@ body {
 .stat-card.total {
   border-right: 4px solid #3498db;
 }
+
 .stat-card.today {
   border-right: 4px solid #2ecc71;
 }
+
 .stat-card.week {
   border-right: 4px solid #f39c12;
 }
+
 .stat-card.month {
   border-right: 4px solid #9b59b6;
 }
@@ -2005,6 +2038,7 @@ body {
 .stat-dot.original {
   background: #2ecc71;
 }
+
 .stat-dot.modified {
   background: #e74c3c;
 }
@@ -2267,9 +2301,11 @@ body {
   0% {
     background-color: transparent;
   }
+
   50% {
     background-color: #fff3cd;
   }
+
   100% {
     background-color: transparent;
   }
@@ -2325,6 +2361,7 @@ body {
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -2417,6 +2454,7 @@ body {
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -2524,10 +2562,12 @@ body {
 
 #certsListContainer {
   flex: 1;
-  overflow-y: scroll !important; /* دائماً يظهر الـ scrollbar */
+  overflow-y: scroll !important;
+  /* دائماً يظهر الـ scrollbar */
   min-height: 300px;
   max-height: 50vh;
-  padding-left: 8px; /* مساحة للـ scrollbar */
+  padding-left: 8px;
+  /* مساحة للـ scrollbar */
 }
 
 #certsListContainer::-webkit-scrollbar {
@@ -2550,18 +2590,21 @@ body {
 
 /* ========== تقليل المسافة بعد / في الحقول ========== */
 .bank-row strong {
-  margin-left: 2px; /* تقليل المسافة */
+  margin-left: 2px;
+  /* تقليل المسافة */
 }
 
 .bank-row .field-value {
-  margin-right: 2px; /* تقليل المسافة من اليمين */
+  margin-right: 2px;
+  /* تقليل المسافة من اليمين */
 }
 
 /* إزالة المسافات الزائدة */
 .bank-info .bank-row {
   display: flex;
   align-items: baseline;
-  gap: 2px; /* مسافة صغيرة جداً */
+  gap: 2px;
+  /* مسافة صغيرة جداً */
 }
 
 .popup-box {
@@ -2602,19 +2645,19 @@ body {
   right: -50%;
   width: 100%;
   height: 200%;
-  background: radial-gradient(
-    circle,
-    rgba(255, 255, 255, 0.1) 0%,
-    transparent 70%
-  );
+  background: radial-gradient(circle,
+      rgba(255, 255, 255, 0.1) 0%,
+      transparent 70%);
   animation: shimmer 3s infinite;
 }
 
 @keyframes shimmer {
+
   0%,
   100% {
     transform: rotate(0deg);
   }
+
   50% {
     transform: rotate(180deg);
   }
@@ -2753,8 +2796,8 @@ body {
   transform: translateY(-1px);
 }
 
-.input-group input:focus + label,
-.input-group input:not(:placeholder-shown) + label {
+.input-group input:focus+label,
+.input-group input:not(:placeholder-shown)+label {
   color: #667eea;
 }
 
@@ -2992,9 +3035,11 @@ body {
   0% {
     box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
   }
+
   70% {
     box-shadow: 0 0 0 10px rgba(102, 126, 234, 0);
   }
+
   100% {
     box-shadow: 0 0 0 0 rgba(102, 126, 234, 0);
   }
@@ -3011,11 +3056,9 @@ body {
   }
 
   .popup-content {
-    background: linear-gradient(
-      180deg,
-      rgba(30, 41, 59, 0) 0%,
-      rgba(15, 23, 42, 1) 100%
-    );
+    background: linear-gradient(180deg,
+        rgba(30, 41, 59, 0) 0%,
+        rgba(15, 23, 42, 1) 100%);
   }
 
   .input-group label {
@@ -3066,7 +3109,8 @@ body {
 .user-info-box .input-group {
   margin: 0;
   flex: 1;
-  min-width: 0; /* مهم لمنع overflow */
+  min-width: 0;
+  /* مهم لمنع overflow */
 }
 
 .user-info-box .input-group label {
@@ -3376,6 +3420,7 @@ body {
 
 /* ========== إخفاء العناصر عند الطباعة ========== */
 @media print {
+
   /* إخفاء كل الأزرار */
   .fees-btn,
   .btn-certificates,
@@ -3859,7 +3904,7 @@ body.has-comparison-bar.details-open {
   max-width: 550px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   direction: rtl;
 }
 
@@ -3990,7 +4035,7 @@ body.has-comparison-bar.details-open {
   border-radius: 15px;
   width: 90%;
   max-width: 500px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   direction: rtl;
 }
 
