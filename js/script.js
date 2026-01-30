@@ -1650,7 +1650,13 @@ const API = {
   get onShortcut() {
     return window.electronAPI?.onShortcut || null;
   },
+
+  // ⭐ إضافة جديدة - نظام الأرشفة
+  get archive() {
+    return window.electronAPI?.archive || null;
+  },
 };
+
 
 // Alias للتوافق
 const checkAPIReady = () => API.check();
@@ -8374,6 +8380,9 @@ document.querySelectorAll('#inputActivity, #inputName, #inputLocation, #inputAre
 /**
  * فتح Modal النسخ الاحتياطي
  */
+/**
+ * فتح Modal النسخ الاحتياطي
+ */
 async function openBackupModal() {
   const modal = document.getElementById('backupModal');
   if (modal) {
@@ -8648,6 +8657,235 @@ window.restoreBackup = restoreBackup;
 window.deleteBackup = deleteBackup;
 window.openBackupFolder = openBackupFolder;
 window.refreshBackupList = refreshBackupList;
+
+
+
+// ========== ⭐ دوال الأرشفة ==========
+let archiveCurrentPage = 1;
+const archivePageSize = 50;
+
+/**
+ * تشغيل الأرشفة - نقل الشهادات القديمة للأرشيف
+ */
+async function runArchive() {
+  const confirmed = confirm(
+    '⚠️ هل أنت متأكد من أرشفة الشهادات الأقدم من سنة؟\n\n' +
+    '• سيتم نقل الشهادات القديمة إلى ملف الأرشيف\n' +
+    '• يمكنك استعادتها في أي وقت\n' +
+    '• هذا سيخفف الضغط على البرنامج'
+  );
+
+  if (!confirmed) return;
+
+  Loading.show('جاري الأرشفة...');
+
+  try {
+    const result = await API.archive.run(365);
+
+    Loading.hide();
+
+    if (result.success) {
+      showNotification(`✅ ${result.message}`, 'success');
+
+      // تحديث قائمة الشهادات إذا كانت مفتوحة
+      if (document.getElementById('certsModal')?.classList.contains('active')) {
+        await searchCertificatesUI();
+      }
+    } else {
+      showNotification(`❌ ${result.error || 'فشل الأرشفة'}`, 'error');
+    }
+  } catch (err) {
+    Loading.hide();
+    console.error('runArchive error:', err);
+    showNotification('❌ حدث خطأ أثناء الأرشفة', 'error');
+  }
+}
+
+/**
+ * فتح modal الأرشيف
+ */
+async function openArchiveModal() {
+  const modal = document.getElementById('archiveModal');
+  if (!modal) return;
+
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+
+  // تحميل الشهادات المؤرشفة
+  archiveCurrentPage = 1;
+  await loadArchivedCertificates();
+}
+
+/**
+ * إغلاق modal الأرشيف
+ */
+function closeArchiveModal() {
+  const modal = document.getElementById('archiveModal');
+  if (modal) {
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+}
+
+/**
+ * تحميل الشهادات المؤرشفة
+ */
+async function loadArchivedCertificates() {
+  const listContainer = document.getElementById('archiveList');
+  const statsContainer = document.getElementById('archiveStatsMini');
+  const paginationContainer = document.getElementById('archivePagination');
+  const searchInput = document.getElementById('searchArchive');
+
+  if (!listContainer) return;
+
+  listContainer.innerHTML = '<div class="loading-spinner">جاري التحميل...</div>';
+
+  try {
+    const searchTerm = searchInput?.value?.trim() || '';
+
+    const [archiveResult, stats] = await Promise.all([
+      API.archive.getAll({ page: archiveCurrentPage, limit: archivePageSize, search: searchTerm }),
+      API.archive.getStats()
+    ]);
+
+    // تحديث الإحصائيات
+    if (statsContainer) {
+      statsContainer.innerHTML = `📊 ${stats.count} شهادة مؤرشفة (${stats.fileSizeMB} MB)`;
+    }
+
+    // عرض الشهادات
+    if (!archiveResult.data || archiveResult.data.length === 0) {
+      listContainer.innerHTML = `
+        <div class="archive-empty">
+          <div class="archive-empty-icon">📦</div>
+          <h3>لا توجد شهادات مؤرشفة</h3>
+          <p>اضغط على "🗄️ أرشفة القديم" لنقل الشهادات الأقدم من سنة</p>
+        </div>
+      `;
+      if (paginationContainer) paginationContainer.innerHTML = '';
+      return;
+    }
+
+    listContainer.innerHTML = archiveResult.data.map(cert => `
+      <div class="archive-card">
+        <div class="cert-info">
+          <div class="cert-main">
+            <div class="cert-name">${cert.name || 'بدون اسم'}</div>
+            <div class="cert-activity">${cert.activity || '-'}</div>
+            <div class="cert-location">${cert.location || '-'}</div>
+          </div>
+          <div class="cert-dates">
+            <div>📅 إنشاء: ${formatArchiveDate(cert.created_at)}</div>
+            <div>📦 أرشفة: ${formatArchiveDate(cert.archived_at)}</div>
+            <div>💰 الإجمالي: ${toArabicNumber(cert.grand_total || 0)} ج</div>
+          </div>
+          <div class="cert-actions">
+            <button onclick="restoreFromArchiveUI(${cert.id})" class="restore-btn">
+              ♻️ استعادة
+            </button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    // Pagination
+    if (paginationContainer && archiveResult.totalPages > 1) {
+      let paginationHTML = '<div class="pagination-btns">';
+
+      if (archiveCurrentPage > 1) {
+        paginationHTML += `<button onclick="goToArchivePage(${archiveCurrentPage - 1})">« السابق</button>`;
+      }
+
+      paginationHTML += `<span>صفحة ${archiveCurrentPage} من ${archiveResult.totalPages}</span>`;
+
+      if (archiveCurrentPage < archiveResult.totalPages) {
+        paginationHTML += `<button onclick="goToArchivePage(${archiveCurrentPage + 1})">التالي »</button>`;
+      }
+
+      paginationHTML += '</div>';
+      paginationContainer.innerHTML = paginationHTML;
+    } else if (paginationContainer) {
+      paginationContainer.innerHTML = '';
+    }
+
+  } catch (err) {
+    console.error('loadArchivedCertificates error:', err);
+    listContainer.innerHTML = '<div class="error">❌ حدث خطأ في تحميل الأرشيف</div>';
+  }
+}
+
+/**
+ * البحث في الأرشيف
+ */
+const searchArchiveUI = Utils.debounce(async function () {
+  archiveCurrentPage = 1;
+  await loadArchivedCertificates();
+}, 300);
+
+/**
+ * تحديث الأرشيف
+ */
+async function refreshArchive() {
+  archiveCurrentPage = 1;
+  document.getElementById('searchArchive').value = '';
+  await loadArchivedCertificates();
+}
+
+/**
+ * الانتقال لصفحة معينة في الأرشيف
+ */
+async function goToArchivePage(page) {
+  archiveCurrentPage = page;
+  await loadArchivedCertificates();
+}
+
+/**
+ * استعادة شهادة من الأرشيف
+ */
+async function restoreFromArchiveUI(id) {
+  const confirmed = confirm('هل أنت متأكد من استعادة هذه الشهادة؟');
+  if (!confirmed) return;
+
+  Loading.show('جاري الاستعادة...');
+
+  try {
+    const result = await API.archive.restore(id);
+
+    Loading.hide();
+
+    if (result.success) {
+      showNotification('✅ تم استعادة الشهادة بنجاح', 'success');
+      await loadArchivedCertificates();
+    } else {
+      showNotification(`❌ ${result.error || 'فشل الاستعادة'}`, 'error');
+    }
+  } catch (err) {
+    Loading.hide();
+    console.error('restoreFromArchiveUI error:', err);
+    showNotification('❌ حدث خطأ أثناء الاستعادة', 'error');
+  }
+}
+
+/**
+ * تنسيق تاريخ الأرشيف
+ */
+function formatArchiveDate(timestamp) {
+  if (!timestamp) return '-';
+  const date = new Date(timestamp);
+  return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+}
+
+// تصدير دوال الأرشفة
+window.runArchive = runArchive;
+window.openArchiveModal = openArchiveModal;
+window.closeArchiveModal = closeArchiveModal;
+window.loadArchivedCertificates = loadArchivedCertificates;
+window.searchArchiveUI = searchArchiveUI;
+window.refreshArchive = refreshArchive;
+window.goToArchivePage = goToArchivePage;
+window.restoreFromArchiveUI = restoreFromArchiveUI;
+
+
 
 // إغلاق modal عند النقر خارجه
 document.addEventListener('click', (e) => {

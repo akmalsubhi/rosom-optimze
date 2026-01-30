@@ -9,6 +9,10 @@ let dbPath = null;
 let SQL;
 let db;
 
+// ========== متغيرات الأرشيف ==========
+let archiveDb = null;
+let archivePath = null;
+
 // ========== نظام التخزين المؤقت (Query Cache) ==========
 // ✅ بعد - Periodic cleanup
 const QueryCache = {
@@ -182,8 +186,10 @@ const PerformanceTracker = {
 function setDataPath(customPath) {
   dataDir = customPath;
   dbPath = path.join(dataDir, 'app.db');
+  archivePath = path.join(dataDir, 'archive.db');
 
   console.log('✅ Database path set to:', dbPath);
+  console.log('📦 Archive path set to:', archivePath);
 
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
@@ -195,6 +201,7 @@ function ensurePath() {
   if (!dataDir) {
     dataDir = path.join(__dirname, 'data');
     dbPath = path.join(dataDir, 'app.db');
+    archivePath = path.join(dataDir, 'archive.db');
 
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
@@ -1497,7 +1504,6 @@ async function getStats(options = {}) {
 }
 
 
-
 // ========== نظام النسخ الاحتياطي (Backup System) ==========
 const BackupSystem = {
   backupDir: null,
@@ -1772,6 +1778,408 @@ const BackupSystem = {
   }
 };
 
+
+// ========== نظام الأرشفة ==========
+
+/**
+ * تهيئة قاعدة بيانات الأرشيف
+ */
+function initArchive() {
+  try {
+    if (!archivePath) {
+      archivePath = path.join(dataDir, 'archive.db');
+    }
+
+    if (fs.existsSync(archivePath)) {
+      console.log('📦 Loading existing archive database...');
+      const filebuffer = fs.readFileSync(archivePath);
+      archiveDb = new SQL.Database(new Uint8Array(filebuffer));
+    } else {
+      console.log('📦 Creating new archive database...');
+      archiveDb = new SQL.Database();
+    }
+
+    // إنشاء جدول الأرشيف
+    archiveDb.run(`CREATE TABLE IF NOT EXISTS archived_certificates (
+      id INTEGER PRIMARY KEY,
+      original_id INTEGER,
+      
+      -- بيانات المنشأة
+      activity TEXT,
+      name TEXT,
+      location TEXT,
+      area REAL,
+      
+      -- بيانات الرسوم
+      persons_count INTEGER,
+      training_fee REAL,
+      consultant_fee REAL,
+      evacuation_fee REAL,
+      inspection_fee REAL,
+      area_fee REAL,
+      ministry_fee REAL,
+      grand_total REAL,
+      ministry_total REAL,
+      protection_fee REAL DEFAULT 0,
+      
+      -- بيانات المستخدم
+      user_name TEXT,
+      
+      -- التواريخ
+      date_governorate INTEGER,
+      date_training INTEGER,
+      date_ministry INTEGER,
+      date_certificate INTEGER,
+      date_decision INTEGER,
+      
+      -- تتبع التعديلات
+      created_at INTEGER,
+      updated_at INTEGER,
+      edit_count INTEGER DEFAULT 0,
+      is_modified INTEGER DEFAULT 0,
+      
+      -- تواريخ الأرشفة
+      archived_at INTEGER,
+      archived_by TEXT
+    );`);
+
+    // فهارس للبحث السريع
+    archiveDb.run('CREATE INDEX IF NOT EXISTS idx_archive_created ON archived_certificates(created_at DESC)');
+    archiveDb.run('CREATE INDEX IF NOT EXISTS idx_archive_name ON archived_certificates(name)');
+    archiveDb.run('CREATE INDEX IF NOT EXISTS idx_archive_activity ON archived_certificates(activity)');
+
+    saveArchive();
+    console.log('✅ Archive database initialized');
+    return true;
+  } catch (err) {
+    console.error('initArchive error:', err);
+    return false;
+  }
+}
+
+/**
+ * حفظ قاعدة بيانات الأرشيف
+ */
+function saveArchive() {
+  if (!archiveDb) return;
+
+  try {
+    const binary = archiveDb.export();
+    const buffer = Buffer.from(binary);
+    fs.writeFileSync(archivePath, buffer);
+    console.log('💾 Archive database saved');
+  } catch (err) {
+    console.error('saveArchive error:', err);
+  }
+}
+
+/**
+ * أرشفة الشهادات القديمة
+ * @param {number} olderThanDays - عدد الأيام (افتراضي: 365 يوم = سنة)
+ * @returns {Object} - نتيجة الأرشفة
+ */
+function archiveOldCertificates(olderThanDays = 365) {
+  try {
+    // تهيئة الأرشيف لو مش موجود
+    if (!archiveDb) {
+      initArchive();
+    }
+
+    const cutoffDate = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
+    const now = Date.now();
+
+    // جلب الشهادات القديمة النشطة
+    const stmt = db.prepare(`
+      SELECT * FROM certificates 
+      WHERE status = 'active' 
+      AND created_at < ?
+      ORDER BY created_at ASC
+    `);
+    stmt.bind([cutoffDate]);
+
+    const oldCertificates = [];
+    while (stmt.step()) {
+      oldCertificates.push(stmt.getAsObject());
+    }
+    stmt.free();
+
+    if (oldCertificates.length === 0) {
+      return {
+        success: true,
+        archived: 0,
+        message: 'لا توجد شهادات قديمة للأرشفة'
+      };
+    }
+
+    // نقل الشهادات للأرشيف
+    let archivedCount = 0;
+    oldCertificates.forEach(cert => {
+      try {
+        // إضافة للأرشيف
+        const insertStmt = archiveDb.prepare(`
+          INSERT INTO archived_certificates (
+            original_id, activity, name, location, area,
+            persons_count, training_fee, consultant_fee, evacuation_fee,
+            inspection_fee, area_fee, ministry_fee, grand_total, ministry_total,
+            protection_fee, user_name,
+            date_governorate, date_training, date_ministry, date_certificate, date_decision,
+            created_at, updated_at, edit_count, is_modified,
+            archived_at, archived_by
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        insertStmt.bind([
+          cert.id,
+          cert.activity || '',
+          cert.name || '',
+          cert.location || '',
+          cert.area || 0,
+          cert.persons_count || 0,
+          cert.training_fee || 0,
+          cert.consultant_fee || 0,
+          cert.evacuation_fee || 0,
+          cert.inspection_fee || 0,
+          cert.area_fee || 0,
+          cert.ministry_fee || 0,
+          cert.grand_total || 0,
+          cert.ministry_total || 0,
+          cert.protection_fee || 0,
+          cert.user_name || '',
+          cert.date_governorate || cert.created_at,
+          cert.date_training || cert.created_at,
+          cert.date_ministry || cert.created_at,
+          cert.date_certificate || cert.created_at,
+          cert.date_decision || cert.created_at,
+          cert.created_at,
+          cert.updated_at,
+          cert.edit_count || 0,
+          cert.is_modified || 0,
+          now,
+          'system'
+        ]);
+        insertStmt.step();
+        insertStmt.free();
+
+        // حذف من القاعدة الرئيسية (soft delete بنغير الحالة لـ archived)
+        const deleteStmt = db.prepare(`UPDATE certificates SET status = 'archived' WHERE id = ?`);
+        deleteStmt.bind([cert.id]);
+        deleteStmt.step();
+        deleteStmt.free();
+
+        archivedCount++;
+      } catch (err) {
+        console.error(`Failed to archive certificate ${cert.id}:`, err);
+      }
+    });
+
+    // حفظ التغييرات
+    saveArchive();
+    save(true);
+    QueryCache.invalidate();
+
+    return {
+      success: true,
+      archived: archivedCount,
+      message: `تم أرشفة ${archivedCount} شهادة بنجاح`
+    };
+  } catch (err) {
+    console.error('archiveOldCertificates error:', err);
+    return { success: false, archived: 0, error: err.message };
+  }
+}
+
+/**
+ * جلب الشهادات المؤرشفة
+ */
+function getArchivedCertificates(options = {}) {
+  try {
+    if (!archiveDb) {
+      initArchive();
+    }
+
+    const { page = 1, limit = 50, search = '' } = options;
+    const offset = (page - 1) * limit;
+
+    let query = 'SELECT * FROM archived_certificates';
+    let countQuery = 'SELECT COUNT(*) as total FROM archived_certificates';
+    const params = [];
+    const countParams = [];
+
+    if (search) {
+      const searchCondition = ` WHERE name LIKE ? OR activity LIKE ? OR location LIKE ?`;
+      query += searchCondition;
+      countQuery += searchCondition;
+      const searchTerm = `%${search}%`;
+      params.push(searchTerm, searchTerm, searchTerm);
+      countParams.push(searchTerm, searchTerm, searchTerm);
+    }
+
+    query += ' ORDER BY archived_at DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    // جلب العدد الإجمالي
+    const countStmt = archiveDb.prepare(countQuery);
+    if (countParams.length > 0) {
+      countStmt.bind(countParams);
+    }
+    let total = 0;
+    if (countStmt.step()) {
+      total = countStmt.get()[0];
+    }
+    countStmt.free();
+
+    // جلب البيانات
+    const stmt = archiveDb.prepare(query);
+    stmt.bind(params);
+
+    const results = [];
+    while (stmt.step()) {
+      results.push(stmt.getAsObject());
+    }
+    stmt.free();
+
+    return {
+      data: results,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    };
+  } catch (err) {
+    console.error('getArchivedCertificates error:', err);
+    return { data: [], total: 0, page: 1, limit: 50, totalPages: 0 };
+  }
+}
+
+/**
+ * البحث في الأرشيف
+ */
+function searchArchivedCertificates(query) {
+  return getArchivedCertificates({ search: query, limit: 100 });
+}
+
+/**
+ * استعادة شهادة من الأرشيف
+ */
+function restoreFromArchive(id) {
+  try {
+    if (!archiveDb) {
+      initArchive();
+    }
+
+    // جلب الشهادة من الأرشيف
+    const stmt = archiveDb.prepare('SELECT * FROM archived_certificates WHERE id = ?');
+    stmt.bind([id]);
+
+    if (!stmt.step()) {
+      stmt.free();
+      return { success: false, error: 'الشهادة غير موجودة في الأرشيف' };
+    }
+
+    const cert = stmt.getAsObject();
+    stmt.free();
+
+    // تحديث الشهادة الأصلية لتصبح نشطة مرة أخرى
+    const updateStmt = db.prepare(`UPDATE certificates SET status = 'active' WHERE id = ?`);
+    updateStmt.bind([cert.original_id]);
+    updateStmt.step();
+    updateStmt.free();
+
+    // حذف من الأرشيف
+    const deleteStmt = archiveDb.prepare('DELETE FROM archived_certificates WHERE id = ?');
+    deleteStmt.bind([id]);
+    deleteStmt.step();
+    deleteStmt.free();
+
+    // حفظ التغييرات
+    saveArchive();
+    save(true);
+    QueryCache.invalidate();
+
+    return {
+      success: true,
+      restoredId: cert.original_id,
+      message: 'تم استعادة الشهادة بنجاح'
+    };
+  } catch (err) {
+    console.error('restoreFromArchive error:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * إحصائيات الأرشيف
+ */
+function getArchiveStats() {
+  try {
+    if (!archiveDb) {
+      initArchive();
+    }
+
+    // العدد الإجمالي
+    let totalStmt = archiveDb.prepare('SELECT COUNT(*) as count FROM archived_certificates');
+    let total = 0;
+    if (totalStmt.step()) {
+      total = totalStmt.get()[0];
+    }
+    totalStmt.free();
+
+    // أقدم وأحدث تاريخ
+    let datesStmt = archiveDb.prepare(`
+      SELECT 
+        MIN(created_at) as oldest,
+        MAX(created_at) as newest,
+        MIN(archived_at) as firstArchived,
+        MAX(archived_at) as lastArchived
+      FROM archived_certificates
+    `);
+
+    let dates = { oldest: null, newest: null, firstArchived: null, lastArchived: null };
+    if (datesStmt.step()) {
+      const row = datesStmt.getAsObject();
+      dates = row;
+    }
+    datesStmt.free();
+
+    // حجم الملف
+    let fileSize = 0;
+    if (fs.existsSync(archivePath)) {
+      const stats = fs.statSync(archivePath);
+      fileSize = stats.size;
+    }
+
+    // إجمالي المبالغ
+    let totalsStmt = archiveDb.prepare(`
+      SELECT 
+        SUM(grand_total) as totalGrand,
+        SUM(ministry_total) as totalMinistry
+      FROM archived_certificates
+    `);
+
+    let totals = { totalGrand: 0, totalMinistry: 0 };
+    if (totalsStmt.step()) {
+      const row = totalsStmt.getAsObject();
+      totals = row;
+    }
+    totalsStmt.free();
+
+    return {
+      count: total,
+      fileSize,
+      fileSizeMB: (fileSize / (1024 * 1024)).toFixed(2),
+      oldestCertificate: dates.oldest,
+      newestCertificate: dates.newest,
+      firstArchived: dates.firstArchived,
+      lastArchived: dates.lastArchived,
+      totalGrandAmount: Math.round(totals.totalGrand || 0),
+      totalMinistryAmount: Math.round(totals.totalMinistry || 0)
+    };
+  } catch (err) {
+    console.error('getArchiveStats error:', err);
+    return { count: 0, fileSize: 0, fileSizeMB: '0' };
+  }
+}
+
 module.exports = {
   init,
   setDataPath,
@@ -1801,6 +2209,13 @@ module.exports = {
   BatchSave,            // للتحكم في الحفظ المجمّع
   PerformanceTracker,   // لمراقبة الأداء
   // ⭐ نظام النسخ الاحتياطي
-  BackupSystem          // للنسخ الاحتياطي والاستعادة
+  BackupSystem,          // للنسخ الاحتياطي والاستعادة
+  // ⭐ دوال الأرشفة
+  initArchive,
+  archiveOldCertificates,
+  getArchivedCertificates,
+  searchArchivedCertificates,
+  restoreFromArchive,
+  getArchiveStats
 };
 

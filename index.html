@@ -781,14 +781,19 @@
   <!-- زر الإحصائيات -->
   <button onclick="showStats()" class="btn-stats">📊 الإحصائيات</button>
 
-  <!-- زر النسخ الاحتياطي -->
-  <button onclick="openBackupModal()" class="btn-backup">💾 النسخ الاحتياطي</button>
+  
+  <!-- ⭐ أزرار الأرشفة -->
+  <button onclick="openArchiveModal()" class="btn-archive">📦 الأرشيف</button>
+  <button onclick="runArchive()" class="btn-archive-run" title="أرشفة الشهادات الأقدم من سنة">🗄️ أرشفة القديم</button>
 
   <!-- زر حفظ الشهادة -->
   <button onclick="saveCertificate()" class="btn-save">💾 حفظ الشهادة</button>
 
   <!-- حالة الشهادة الحالية -->
   <div id="certificateStatus"></div>
+
+  <!-- زر النسخ الاحتياطي -->
+  <button onclick="openBackupModal()" class="btn-backup-admin">💾 النسخ الاحتياطي</button>
 
   <!-- ========== Modal النسخ الاحتياطي ========== -->
   <div id="backupModal" class="modal-overlay">
@@ -1094,6 +1099,36 @@
         </div>
       </div>
     </div>
+
+  </div>
+  </div>
+
+  <!-- ========== ⭐ Modal الأرشيف ========== -->
+  <div id="archiveModal" class="modal-overlay">
+    <div class="modal-content certs-modal-large">
+      <div class="modal-header archive-header">
+        <h3>📦 الشهادات المؤرشفة</h3>
+        <div class="archive-stats-mini" id="archiveStatsMini"></div>
+        <button onclick="closeArchiveModal()" class="close-btn">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- البحث في الأرشيف -->
+        <div class="search-row">
+          <div class="search-field main-search">
+            <input type="text" id="searchArchive" placeholder="🔍 بحث في الأرشيف..." oninput="searchArchiveUI()">
+          </div>
+          <button onclick="refreshArchive()" class="btn-refresh">🔄 تحديث</button>
+        </div>
+
+        <!-- قائمة الشهادات المؤرشفة -->
+        <div id="archiveList" class="certs-list"></div>
+
+        <!-- Pagination -->
+        <div id="archivePagination" class="pagination"></div>
+      </div>
+    </div>
+  </div>
 
 </body>
 <script src="js/html2canvas.min.js" defer></script>

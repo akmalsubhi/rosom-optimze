@@ -1,0 +1,6 @@
+# Ignore node modules folder
+node_modules/
+
+# Optional: ignore env files and logs
+.env
+npm-debug.log

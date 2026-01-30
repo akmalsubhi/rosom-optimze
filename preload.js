@@ -48,12 +48,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
         cancel: (certId) => ipcRenderer.invoke('non-payment:cancel', certId)
     },
 
-    // ⭐ نظام النسخ الاحتياطي
+    // ⭐ الأرشفة
+    archive: {
+        run: (olderThanDays) => ipcRenderer.invoke('archive:run', olderThanDays),
+        getAll: (options) => ipcRenderer.invoke('archive:getAll', options),
+        search: (query) => ipcRenderer.invoke('archive:search', query),
+        restore: (id) => ipcRenderer.invoke('archive:restore', id),
+        getStats: () => ipcRenderer.invoke('archive:stats')
+    },
+
+    // ⭐ النسخ الاحتياطي
     backup: {
-        create: (isAutomatic = false) => ipcRenderer.invoke('backup:create', isAutomatic),
-        restore: (backupFileName) => ipcRenderer.invoke('backup:restore', backupFileName),
+        create: (isAutomatic) => ipcRenderer.invoke('backup:create', isAutomatic),
+        restore: (fileName) => ipcRenderer.invoke('backup:restore', fileName),
         list: () => ipcRenderer.invoke('backup:list'),
-        delete: (backupFileName) => ipcRenderer.invoke('backup:delete', backupFileName),
+        delete: (fileName) => ipcRenderer.invoke('backup:delete', fileName),
         getLastInfo: () => ipcRenderer.invoke('backup:getLastInfo'),
         getDirectory: () => ipcRenderer.invoke('backup:getDirectory'),
         openFolder: () => ipcRenderer.invoke('backup:openFolder')
